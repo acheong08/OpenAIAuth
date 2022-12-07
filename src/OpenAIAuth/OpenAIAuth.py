@@ -181,6 +181,7 @@ class OpenAIAuth:
                 self.debugger.log("Status code: ", end="")
                 self.debugger.log(response.status_code)
                 self.debugger.log("Rate limit hit")
+                self.debugger.log("Response: " + str(response.text))
                 raise Exception("Rate limit hit")
         else:
             self.debugger.log("Error in part four")
