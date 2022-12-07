@@ -333,7 +333,6 @@ class OpenAIAuth:
             "Referer": f"https://auth0.openai.com/u/login/password?state={old_state}",
         }
         response = self.session.get(url, headers=headers, allow_redirects=True)
-        print("Got response code")
         is_200 = response.status_code == 200
         if is_200:
             # Access Token
