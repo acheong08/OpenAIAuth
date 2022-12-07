@@ -1,9 +1,20 @@
-from sys import argv
+# Credits to github.com/rawandahmad698/PyChatGPT
 import re
 import urllib
 
 import tls_client
-# Credits to github.com/rawandahmad698/PyChatGPT
+
+
+class Debugger:
+    def __init__(self, debug: bool = False):
+        self.debug = False
+
+    def set_debug(self, debug: bool):
+        self.debug = debug
+
+    def log(self, message: str):
+        if self.debug:
+            print(message)
 
 
 class OpenAIAuth:
@@ -13,6 +24,7 @@ class OpenAIAuth:
         password: str,
         use_proxy: bool = False,
         proxy: str = None,
+        debug: bool = False,
     ):
         self.session_token = None
         self.email_address = email_address
@@ -23,8 +35,7 @@ class OpenAIAuth:
             client_identifier="chrome_105",
         )
         self.access_token: str = None
-        if '--debug' in argv:
-            self.debug = True
+        self.debugger = Debugger(debug)
 
     @staticmethod
     def url_encode(string: str) -> str:
@@ -69,11 +80,11 @@ class OpenAIAuth:
             self.part_two()
         else:
             if self.debug:
-                print("Error in part one")
-                print("Response: ", end="")
-                print(response.text)
-                print("Status code: ", end="")
-                print(response.status_code)
+                self.debugger.log("Error in part one")
+                self.debugger.log("Response: ", end="")
+                self.debugger.log(response.text)
+                self.debugger.log("Status code: ", end="")
+                self.debugger.log(response.status_code)
             raise Exception("Error logging in")
 
     def part_two(self) -> None:
@@ -97,12 +108,11 @@ class OpenAIAuth:
             csrf_token = response.json()["csrfToken"]
             self.part_three(token=csrf_token)
         else:
-            if self.debug:
-                print("Error in part two")
-                print("Response: ", end="")
-                print(response.text)
-                print("Status code: ", end="")
-                print(response.status_code)
+            self.debugger.log("Error in part two")
+            self.debugger.log("Response: ", end="")
+            self.debugger.log(response.text)
+            self.debugger.log("Status code: ", end="")
+            self.debugger.log(response.status_code)
             raise Exception("Error logging in")
 
     def part_three(self, token: str) -> None:
@@ -130,16 +140,16 @@ class OpenAIAuth:
             self.part_four(url=url)
         elif response.status_code == 400:
             if self.debug:
-                print("Error in part three")
-                print("Invalid credentials")
+                self.debugger.log("Error in part three")
+                self.debugger.log("Invalid credentials")
             raise Exception("Invalid credentials")
         else:
             if self.debug:
-                print("Error in part three")
-                print("Response: ", end="")
-                print(response.text)
-                print("Status code: ", end="")
-                print(response.status_code)
+                self.debugger.log("Error in part three")
+                self.debugger.log("Response: ", end="")
+                self.debugger.log(response.text)
+                self.debugger.log("Status code: ", end="")
+                self.debugger.log(response.status_code)
             raise Exception("Unknown error")
 
     def part_four(self, url: str) -> None:
@@ -184,17 +194,17 @@ class OpenAIAuth:
         if response.status_code == 200:
             if re.search(r'<img[^>]+alt="captcha"[^>]+>', response.text):
                 if self.debug:
-                    print("Error in part five")
-                    print("Captcha detected")
+                    self.debugger.log("Error in part five")
+                    self.debugger.log("Captcha detected")
                 raise ValueError("Captcha detected")
             self.part_six(state=state, captcha=None)
         else:
             if self.debug:
-                print("Error in part five")
-                print("Response: ", end="")
-                print(response.text)
-                print("Status code: ", end="")
-                print(response.status_code)
+                self.debugger.log("Error in part five")
+                self.debugger.log("Response: ", end="")
+                self.debugger.log(response.text)
+                self.debugger.log("Status code: ", end="")
+                self.debugger.log(response.status_code)
             raise ValueError("Invalid response code")
 
     def part_six(self, state: str, captcha: str or None) -> None:
@@ -233,11 +243,11 @@ class OpenAIAuth:
             self.part_seven(state=state)
         else:
             if self.debug:
-                print("Error in part six")
-                print("Response: ", end="")
-                print(response.text)
-                print("Status code: ", end="")
-                print(response.status_code)
+                self.debugger.log("Error in part six")
+                self.debugger.log("Response: ", end="")
+                self.debugger.log(response.text)
+                self.debugger.log("Status code: ", end="")
+                self.debugger.log(response.status_code)
             raise Exception("Unknown error")
 
     def part_seven(self, state: str) -> None:
@@ -270,11 +280,11 @@ class OpenAIAuth:
             self.part_eight(old_state=state, new_state=new_state)
         else:
             if self.debug:
-                print("Error in part seven")
-                print("Response: ", end="")
-                print(response.text)
-                print("Status code: ", end="")
-                print(response.status_code)
+                self.debugger.log("Error in part seven")
+                self.debugger.log("Response: ", end="")
+                self.debugger.log(response.text)
+                self.debugger.log("Status code: ", end="")
+                self.debugger.log(response.status_code)
             raise Exception("Unknown error")
 
     def part_eight(self, old_state: str, new_state) -> None:
@@ -303,15 +313,15 @@ class OpenAIAuth:
                 self.save_access_token(access_token=access_token)
             else:
                 if self.debug:
-                    print("Error in part eight")
-                    print("Response: ", end="")
-                    print(response.text)
-                    print("Status code: ", end="")
-                    print(response.status_code)
-                    print("Invalid credentials")
+                    self.debugger.log("Error in part eight")
+                    self.debugger.log("Response: ", end="")
+                    self.debugger.log(response.text)
+                    self.debugger.log("Status code: ", end="")
+                    self.debugger.log(response.status_code)
+                    self.debugger.log("Invalid credentials")
                 raise Exception("Invalid credentials")
         else:
-            print("Invalid credentials")
+            self.debugger.log("Invalid credentials")
             raise Exception("Failed to find accessToken")
 
     def save_access_token(self, access_token: str) -> None:
@@ -323,7 +333,7 @@ class OpenAIAuth:
         if self.part_nine():
             self.access_token = access_token
         else:
-            print("Failed to login")
+            self.debugger.log("Failed to login")
             raise Exception("Failed to login")
 
     def part_nine(self) -> bool:
