@@ -7,7 +7,7 @@ import tls_client
 
 class Debugger:
     def __init__(self, debug: bool = False):
-        self.debug = False
+        self.debug = debug
 
     def set_debug(self, debug: bool):
         self.debug = debug
