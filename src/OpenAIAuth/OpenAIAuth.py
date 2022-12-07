@@ -7,14 +7,16 @@ import tls_client
 
 class Debugger:
     def __init__(self, debug: bool = False):
+        if debug:
+            print("Debugger enabled on OpenAIAuth")
         self.debug = debug
 
     def set_debug(self, debug: bool):
         self.debug = debug
 
-    def log(self, message: str):
+    def log(self, message: str, end: str = "\n"):
         if self.debug:
-            print(message)
+            print(message, end=end)
 
 
 class OpenAIAuth:
@@ -47,6 +49,7 @@ class OpenAIAuth:
         return urllib.parse.quote(string)
 
     def begin(self) -> None:
+        self.debugger.log("Beginning auth process")
         """
         Begin the auth process
         """
@@ -79,15 +82,15 @@ class OpenAIAuth:
         if response.status_code == 200:
             self.part_two()
         else:
-            if self.debug:
-                self.debugger.log("Error in part one")
-                self.debugger.log("Response: ", end="")
-                self.debugger.log(response.text)
-                self.debugger.log("Status code: ", end="")
-                self.debugger.log(response.status_code)
-            raise Exception("Error logging in")
+            self.debugger.log("Error in part one")
+            self.debugger.log("Response: ", end="")
+            self.debugger.log(response.text)
+            self.debugger.log("Status code: ", end="")
+            self.debugger.log(response.status_code)
+            raise Exception("API error")
 
     def part_two(self) -> None:
+        self.debugger.log("Beginning part two")
         """
         In part two, We make a request to https://chat.openai.com/api/auth/csrf and grab a fresh csrf token
         """
@@ -116,6 +119,7 @@ class OpenAIAuth:
             raise Exception("Error logging in")
 
     def part_three(self, token: str) -> None:
+        self.debugger.log("Beginning part three")
         """
         We reuse the token from part to make a request to /api/auth/signin/auth0?prompt=login
         """
@@ -139,20 +143,19 @@ class OpenAIAuth:
             url = response.json()["url"]
             self.part_four(url=url)
         elif response.status_code == 400:
-            if self.debug:
-                self.debugger.log("Error in part three")
-                self.debugger.log("Invalid credentials")
+            self.debugger.log("Error in part three")
+            self.debugger.log("Invalid credentials")
             raise Exception("Invalid credentials")
         else:
-            if self.debug:
-                self.debugger.log("Error in part three")
-                self.debugger.log("Response: ", end="")
-                self.debugger.log(response.text)
-                self.debugger.log("Status code: ", end="")
-                self.debugger.log(response.status_code)
+            self.debugger.log("Error in part three")
+            self.debugger.log("Response: ", end="")
+            self.debugger.log(response.text)
+            self.debugger.log("Status code: ", end="")
+            self.debugger.log(response.status_code)
             raise Exception("Unknown error")
 
     def part_four(self, url: str) -> None:
+        self.debugger.log("Beginning part four")
         """
         We make a GET request to url
         :param url:
@@ -169,13 +172,27 @@ class OpenAIAuth:
         }
         response = self.session.get(url=url, headers=headers)
         if response.status_code == 302:
-            state = re.findall(r"state=(.*)", response.text)[0]
-            state = state.split('"')[0]
-            self.part_five(state=state)
+            try:
+                state = re.findall(r"state=(.*)", response.text)[0]
+                state = state.split('"')[0]
+                self.part_five(state=state)
+            except IndexError:
+                self.debugger.log("Error in part four")
+                self.debugger.log("Status code: ", end="")
+                self.debugger.log(response.status_code)
+                self.debugger.log("Rate limit hit")
+                raise Exception("Rate limit hit")
         else:
+            self.debugger.log("Error in part four")
+            self.debugger.log("Response: ", end="")
+            self.debugger.log(response.text)
+            self.debugger.log("Status code: ", end="")
+            self.debugger.log(response.status_code)
+            self.debugger.log("Wrong response code")
             raise Exception("Unknown error")
 
     def part_five(self, state: str) -> None:
+        self.debugger.log("Beginning part five")
         """
         We use the state to get the login page & check for a captcha
         """
@@ -193,21 +210,20 @@ class OpenAIAuth:
         response = self.session.get(url, headers=headers)
         if response.status_code == 200:
             if re.search(r'<img[^>]+alt="captcha"[^>]+>', response.text):
-                if self.debug:
-                    self.debugger.log("Error in part five")
-                    self.debugger.log("Captcha detected")
+                self.debugger.log("Error in part five")
+                self.debugger.log("Captcha detected")
                 raise ValueError("Captcha detected")
             self.part_six(state=state, captcha=None)
         else:
-            if self.debug:
-                self.debugger.log("Error in part five")
-                self.debugger.log("Response: ", end="")
-                self.debugger.log(response.text)
-                self.debugger.log("Status code: ", end="")
-                self.debugger.log(response.status_code)
+            self.debugger.log("Error in part five")
+            self.debugger.log("Response: ", end="")
+            self.debugger.log(response.text)
+            self.debugger.log("Status code: ", end="")
+            self.debugger.log(response.status_code)
             raise ValueError("Invalid response code")
 
     def part_six(self, state: str, captcha: str or None) -> None:
+        self.debugger.log("Beginning part six")
         """
         We make a POST request to the login page with the captcha, email
         :param state:
@@ -242,15 +258,15 @@ class OpenAIAuth:
         if response.status_code == 302:
             self.part_seven(state=state)
         else:
-            if self.debug:
-                self.debugger.log("Error in part six")
-                self.debugger.log("Response: ", end="")
-                self.debugger.log(response.text)
-                self.debugger.log("Status code: ", end="")
-                self.debugger.log(response.status_code)
+            self.debugger.log("Error in part six")
+            self.debugger.log("Response: ", end="")
+            self.debugger.log(response.text)
+            self.debugger.log("Status code: ", end="")
+            self.debugger.log(response.status_code)
             raise Exception("Unknown error")
 
     def part_seven(self, state: str) -> None:
+        self.debugger.log("Beginning part seven")
         """
         We enter the password
         :param state:
@@ -272,22 +288,40 @@ class OpenAIAuth:
             "Accept-Language": "en-US,en;q=0.9",
             "Content-Type": "application/x-www-form-urlencoded",
         }
-        response = self.session.post(url, headers=headers, data=payload)
-        is_302 = response.status_code == 302
-        if is_302:
-            new_state = re.findall(r"state=(.*)", response.text)[0]
-            new_state = new_state.split('"')[0]
-            self.part_eight(old_state=state, new_state=new_state)
-        else:
-            if self.debug:
+        try:
+            response = self.session.post(url, headers=headers, data=payload)
+            self.debugger.log("Request went through")
+        except Exception as e:
+            self.debugger.log("Error in part seven")
+            self.debugger.log("Exception: ", end="")
+            self.debugger.log(e)
+            raise Exception("Could not get response")
+        if response.status_code == 302:
+            self.debugger.log("Response code is 302")
+            try:
+                new_state = re.findall(r"state=(.*)", response.text)[0]
+                new_state = new_state.split('"')[0]
+                self.debugger.log("New state found")
+                self.part_eight(old_state=state, new_state=new_state)
+                self.debugger.log("Part eight called")
+            except Exception as e:
                 self.debugger.log("Error in part seven")
-                self.debugger.log("Response: ", end="")
-                self.debugger.log(response.text)
-                self.debugger.log("Status code: ", end="")
-                self.debugger.log(response.status_code)
-            raise Exception("Unknown error")
+                self.debugger.log("Exception: ", end="")
+                self.debugger.log(e)
+                raise Exception("State not found")
+        elif response.status_code == 400:
+            self.debugger.log("Error in part seven")
+            self.debugger.log("Status code: ", end="")
+            self.debugger.log(response.status_code)
+            raise Exception("Wrong email or password")
+        else:
+            self.debugger.log("Error in part seven")
+            self.debugger.log("Status code: ", end="")
+            self.debugger.log(response.status_code)
+            raise Exception("Wrong status code")
 
     def part_eight(self, old_state: str, new_state) -> None:
+        self.debugger.log("Beginning part eight")
         url = f"https://auth0.openai.com/authorize/resume?state={new_state}"
         headers = {
             "Host": "auth0.openai.com",
@@ -299,6 +333,7 @@ class OpenAIAuth:
             "Referer": f"https://auth0.openai.com/u/login/password?state={old_state}",
         }
         response = self.session.get(url, headers=headers, allow_redirects=True)
+        print("Got response code")
         is_200 = response.status_code == 200
         if is_200:
             # Access Token
@@ -307,18 +342,24 @@ class OpenAIAuth:
                 response.text,
             )
             if access_token:
-                access_token = access_token[0]
-                access_token = access_token.split('"')[0]
-                # Save access_token and an hour from now on ./classes/auth.json
-                self.save_access_token(access_token=access_token)
-            else:
-                if self.debug:
+                try:
+                    access_token = access_token[0]
+                    access_token = access_token.split('"')[0]
+                    # Save access_token and an hour from now on ./classes/auth.json
+                    self.save_access_token(access_token=access_token)
+                except Exception as e:
                     self.debugger.log("Error in part eight")
                     self.debugger.log("Response: ", end="")
                     self.debugger.log(response.text)
                     self.debugger.log("Status code: ", end="")
                     self.debugger.log(response.status_code)
-                    self.debugger.log("Invalid credentials")
+                    raise e
+            else:
+                self.debugger.log("Error in part eight")
+                self.debugger.log("Response: ", end="")
+                self.debugger.log(response.text)
+                self.debugger.log("Status code: ", end="")
+                self.debugger.log(response.status_code)
                 raise Exception("Invalid credentials")
         else:
             self.debugger.log("Invalid credentials")
@@ -337,6 +378,7 @@ class OpenAIAuth:
             raise Exception("Failed to login")
 
     def part_nine(self) -> bool:
+        self.debugger.log("Beginning part nine")
         url = "https://chat.openai.com/api/auth/session"
         headers = {
             "Host": "ask.openai.com",
@@ -356,6 +398,8 @@ class OpenAIAuth:
             self.session_token = response.cookies.get(
                 "__Secure-next-auth.session-token",
             )
+            self.debugger.log("SUCCESS")
             return True
         self.session_token = None
+        self.debugger.log("Failed to get session token")
         raise Exception("Failed to get session token")
