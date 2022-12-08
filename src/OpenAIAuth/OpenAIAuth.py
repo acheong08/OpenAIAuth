@@ -34,7 +34,7 @@ class OpenAIAuth:
         self.use_proxy = use_proxy
         self.proxy = proxy
         self.session = tls_client.Session(
-            client_identifier="chrome_105",
+            client_identifier="chrome_105"
         )
         self.access_token: str = None
         self.debugger = Debugger(debug)
@@ -49,10 +49,10 @@ class OpenAIAuth:
         return urllib.parse.quote(string)
 
     def begin(self) -> None:
-        self.debugger.log("Beginning auth process")
         """
         Begin the auth process
         """
+        self.debugger.log("Beginning auth process")
         if not self.email_address or not self.password:
             return
 
@@ -90,10 +90,10 @@ class OpenAIAuth:
             raise Exception("API error")
 
     def part_two(self) -> None:
-        self.debugger.log("Beginning part two")
         """
         In part two, We make a request to https://chat.openai.com/api/auth/csrf and grab a fresh csrf token
         """
+        self.debugger.log("Beginning part two")
 
         url = "https://chat.openai.com/api/auth/csrf"
         headers = {
@@ -119,10 +119,10 @@ class OpenAIAuth:
             raise Exception("Error logging in")
 
     def part_three(self, token: str) -> None:
-        self.debugger.log("Beginning part three")
         """
         We reuse the token from part to make a request to /api/auth/signin/auth0?prompt=login
         """
+        self.debugger.log("Beginning part three")
         url = "https://chat.openai.com/api/auth/signin/auth0?prompt=login"
 
         payload = f"callbackUrl=%2F&csrfToken={token}&json=true"
@@ -141,6 +141,9 @@ class OpenAIAuth:
         response = self.session.post(url=url, headers=headers, data=payload)
         if response.status_code == 200 and "json" in response.headers["Content-Type"]:
             url = response.json()["url"]
+            if url == "https://chat.openai.com/api/auth/error?error=OAuthSignin" or 'error' in url:
+                self.debugger.log("You have been rate limited")
+                raise Exception("You have been rate limited.")
             self.part_four(url=url)
         elif response.status_code == 400:
             self.debugger.log("Error in part three")
@@ -155,12 +158,12 @@ class OpenAIAuth:
             raise Exception("Unknown error")
 
     def part_four(self, url: str) -> None:
-        self.debugger.log("Beginning part four")
         """
         We make a GET request to url
         :param url:
         :return:
         """
+        self.debugger.log("Beginning part four")
         headers = {
             "Host": "auth0.openai.com",
             "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
@@ -193,10 +196,10 @@ class OpenAIAuth:
             raise Exception("Unknown error")
 
     def part_five(self, state: str) -> None:
-        self.debugger.log("Beginning part five")
         """
         We use the state to get the login page & check for a captcha
         """
+        self.debugger.log("Beginning part five")
         url = f"https://auth0.openai.com/u/login/identifier?state={state}"
 
         headers = {
@@ -224,13 +227,13 @@ class OpenAIAuth:
             raise ValueError("Invalid response code")
 
     def part_six(self, state: str, captcha: str or None) -> None:
-        self.debugger.log("Beginning part six")
         """
         We make a POST request to the login page with the captcha, email
         :param state:
         :param captcha:
         :return:
         """
+        self.debugger.log("Beginning part six")
         url = f"https://auth0.openai.com/u/login/identifier?state={state}"
         email_url_encoded = self.url_encode(self.email_address)
         payload = (
@@ -345,8 +348,6 @@ class OpenAIAuth:
                 try:
                     access_token = access_token[0]
                     access_token = access_token.split('"')[0]
-                    # Save access_token and an hour from now on ./classes/auth.json
-                    self.save_access_token(access_token=access_token)
                 except Exception as e:
                     self.debugger.log("Error in part eight")
                     self.debugger.log("Response: ", end="")
@@ -360,10 +361,11 @@ class OpenAIAuth:
                 self.debugger.log(response.text)
                 self.debugger.log("Status code: ", end="")
                 self.debugger.log(response.status_code)
-                raise Exception("Invalid credentials")
+                raise Exception("Auth0 did not issue an access token")
+            self.part_nine()
         else:
-            self.debugger.log("Invalid credentials")
-            raise Exception("Failed to find accessToken")
+            self.debugger.log("Incorrect response code in part eight")
+            raise Exception("Incorrect response code")
 
     def save_access_token(self, access_token: str) -> None:
         """
@@ -371,11 +373,7 @@ class OpenAIAuth:
         :param access_token:
         :return:
         """
-        if self.part_nine():
-            self.access_token = access_token
-        else:
-            self.debugger.log("Failed to login")
-            raise Exception("Failed to login")
+        self.access_token = access_token
 
     def part_nine(self) -> bool:
         self.debugger.log("Beginning part nine")
@@ -394,12 +392,16 @@ class OpenAIAuth:
         response = self.session.get(url, headers=headers)
         is_200 = response.status_code == 200
         if is_200:
-            # Get session token
-            self.session_token = response.cookies.get(
-                "__Secure-next-auth.session-token",
-            )
-            self.debugger.log("SUCCESS")
-            return True
+            if 'json' in response.headers['Content-Type']:
+                json_response = response.json()
+                access_token = json_response['accessToken']
+                self.save_access_token(access_token=access_token)
+            else:
+                self.debugger.log(
+                    "Please try again with a proxy (or use a new proxy if you are using one)")
+        else:
+            self.debugger.log(
+                "Please try again with a proxy (or use a new proxy if you are using one)")
         self.session_token = None
         self.debugger.log("Failed to get session token")
         raise Exception("Failed to get session token")
