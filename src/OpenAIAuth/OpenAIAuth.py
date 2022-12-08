@@ -399,6 +399,7 @@ class OpenAIAuth:
                 json_response = response.json()
                 access_token = json_response['accessToken']
                 self.save_access_token(access_token=access_token)
+                self.debugger.log("SUCCESS")
                 return True
             else:
                 self.debugger.log(
