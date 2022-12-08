@@ -307,7 +307,6 @@ class OpenAIAuth:
                 new_state = new_state.split('"')[0]
                 self.debugger.log("New state found")
                 self.part_eight(old_state=state, new_state=new_state)
-                self.debugger.log("Part eight called")
             except Exception as e:
                 self.debugger.log("Error in part seven")
                 self.debugger.log("Exception: ", end="")
@@ -392,6 +391,10 @@ class OpenAIAuth:
         response = self.session.get(url, headers=headers)
         is_200 = response.status_code == 200
         if is_200:
+            # Get session token
+            self.session_token = response.cookies.get(
+                "__Secure-next-auth.session-token",
+            )
             if 'json' in response.headers['Content-Type']:
                 json_response = response.json()
                 access_token = json_response['accessToken']
