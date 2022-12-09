@@ -179,13 +179,13 @@ class OpenAIAuth:
                 state = re.findall(r"state=(.*)", response.text)[0]
                 state = state.split('"')[0]
                 self.part_five(state=state)
-            except IndexError:
+            except IndexError as exc:
                 self.debugger.log("Error in part four")
                 self.debugger.log("Status code: ", end="")
                 self.debugger.log(response.status_code)
                 self.debugger.log("Rate limit hit")
                 self.debugger.log("Response: " + str(response.text))
-                raise Exception("Rate limit hit")
+                raise Exception("Rate limit hit") from exc
         else:
             self.debugger.log("Error in part four")
             self.debugger.log("Response: ", end="")
@@ -270,14 +270,13 @@ class OpenAIAuth:
             raise Exception("Unknown error")
 
     def part_seven(self, state: str) -> None:
-        self.debugger.log("Beginning part seven")
         """
         We enter the password
         :param state:
         :return:
         """
         url = f"https://auth0.openai.com/u/login/password?state={state}"
-
+        self.debugger.log("Beginning part seven")
         email_url_encoded = self.url_encode(self.email_address)
         password_url_encoded = self.url_encode(self.password)
         payload = f"state={state}&username={email_url_encoded}&password={password_url_encoded}&action=default"
@@ -295,11 +294,11 @@ class OpenAIAuth:
         try:
             response = self.session.post(url, headers=headers, data=payload)
             self.debugger.log("Request went through")
-        except Exception as e:
+        except Exception as exc:
             self.debugger.log("Error in part seven")
             self.debugger.log("Exception: ", end="")
-            self.debugger.log(e)
-            raise Exception("Could not get response")
+            self.debugger.log(exc)
+            raise Exception("Could not get response") from exc
         if response.status_code == 302:
             self.debugger.log("Response code is 302")
             try:
@@ -307,11 +306,11 @@ class OpenAIAuth:
                 new_state = new_state.split('"')[0]
                 self.debugger.log("New state found")
                 self.part_eight(old_state=state, new_state=new_state)
-            except Exception as e:
+            except Exception as exc:
                 self.debugger.log("Error in part seven")
                 self.debugger.log("Exception: ", end="")
-                self.debugger.log(e)
-                raise Exception("State not found")
+                self.debugger.log(exc)
+                raise Exception("State not found") from exc
         elif response.status_code == 400:
             self.debugger.log("Error in part seven")
             self.debugger.log("Status code: ", end="")
