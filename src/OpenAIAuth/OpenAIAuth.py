@@ -28,7 +28,8 @@ class OpenAIAuth:
         use_proxy: bool = False,
         proxy: str = None,
         debug: bool = False,
-        use_captcha: bool = True
+        use_captcha: bool = True,
+        captcha_solver: any = None
     ):
         self.session_token = None
         self.email_address = email_address
@@ -41,6 +42,7 @@ class OpenAIAuth:
         self.access_token: str = None
         self.debugger = Debugger(debug)
         self.use_capcha = use_captcha
+        self.captcha_solver: any = captcha_solver
 
     @staticmethod
     def url_encode(string: str) -> str:
@@ -225,7 +227,7 @@ class OpenAIAuth:
                 pattern = re.compile(
                     r'<img[^>]+alt="captcha"[^>]+src="(.+?)"[^>]+>')
                 match = pattern.search(response.text)
-                if match:
+                if match and self.captcha_solver:
                     captcha = match.group(1)
                     self.debugger.log("Captcha extracted")
                     # Save captcha (in JavaScript src format) to real svg file
@@ -234,11 +236,8 @@ class OpenAIAuth:
                     captcha = base64.b64decode(captcha)
                     captcha = captcha.decode("utf-8")
                     # Save captcha to file
-                    with open("captcha.svg", "w") as file:
-                        file.write(captcha)
-                    self.debugger.log("Captcha saved to file")
-                    print("Captcha saved to captcha.svg")
-                    captcha_code = input("Enter captcha code: ")
+                    captcha_code = self.captcha_solver.solve_captcha(
+                        captcha)
                 else:
                     self.debugger.log("Failed to find captcha")
                     raise ValueError("Captcha detected")
