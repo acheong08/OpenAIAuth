@@ -1,6 +1,7 @@
 # Credits to github.com/rawandahmad698/PyChatGPT
 import re
 import urllib
+import base64
 
 import tls_client
 
@@ -213,11 +214,30 @@ class OpenAIAuth:
         }
         response = self.session.get(url, headers=headers)
         if response.status_code == 200:
+            captcha_code = None
             if re.search(r'<img[^>]+alt="captcha"[^>]+>', response.text):
-                self.debugger.log("Error in part five")
                 self.debugger.log("Captcha detected")
-                raise ValueError("Captcha detected")
-            self.part_six(state=state, captcha=None)
+                pattern = re.compile(
+                    r'<img[^>]+alt="captcha"[^>]+src="(.+?)"[^>]+>')
+                match = pattern.search(response.text)
+                if match:
+                    captcha = match.group(1)
+                    self.debugger.log("Captcha extracted")
+                    # Save captcha (in JavaScript src format) to real svg file
+                    captcha = captcha.replace("data:image/svg+xml;base64,", "")
+                    # Convert base64 to svg
+                    captcha = base64.b64decode(captcha)
+                    captcha = captcha.decode("utf-8")
+                    # Save captcha to file
+                    with open("captcha.svg", "w") as file:
+                        file.write(captcha)
+                    self.debugger.log("Captcha saved to file")
+                    print("Captcha saved to captcha.svg")
+                    captcha_code = input("Enter captcha code: ")
+                else:
+                    self.debugger.log("Failed to find captcha")
+                    raise ValueError("Captcha detected")
+            self.part_six(state=state, captcha=captcha_code)
         else:
             self.debugger.log("Error in part five")
             self.debugger.log("Response: ", end="")
