@@ -28,6 +28,7 @@ class OpenAIAuth:
         use_proxy: bool = False,
         proxy: str = None,
         debug: bool = False,
+        use_captcha: bool = True
     ):
         self.session_token = None
         self.email_address = email_address
@@ -39,6 +40,7 @@ class OpenAIAuth:
         )
         self.access_token: str = None
         self.debugger = Debugger(debug)
+        self.use_capcha = use_captcha
 
     @staticmethod
     def url_encode(string: str) -> str:
@@ -217,6 +219,9 @@ class OpenAIAuth:
             captcha_code = None
             if re.search(r'<img[^>]+alt="captcha"[^>]+>', response.text):
                 self.debugger.log("Captcha detected")
+                if self.use_capcha == False:
+                    self.debugger.log("Captcha detected but not used")
+                    raise Exception("Captcha detected but not used")
                 pattern = re.compile(
                     r'<img[^>]+alt="captcha"[^>]+src="(.+?)"[^>]+>')
                 match = pattern.search(response.text)
