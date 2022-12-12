@@ -29,7 +29,8 @@ class OpenAIAuth:
         proxy: str = None,
         debug: bool = False,
         use_captcha: bool = True,
-        captcha_solver: any = None
+        captcha_solver: any = None,
+        cf_clearance: str = None,
     ):
         self.session_token = None
         self.email_address = email_address
@@ -43,6 +44,9 @@ class OpenAIAuth:
         self.debugger = Debugger(debug)
         self.use_capcha = use_captcha
         self.captcha_solver: any = captcha_solver
+        self.cf_clearance = cf_clearance
+        self.cookie = {"cf_clearance": cf_clearance}
+        self.user_agent = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/107.0.0.0 Safari/537.36"
 
     @staticmethod
     def url_encode(string: str) -> str:
@@ -76,14 +80,16 @@ class OpenAIAuth:
         headers = {
             "Host": "ask.openai.com",
             "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-            "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) "
-            "Version/16.1 Safari/605.1.15",
+            "User-Agent": self.user_agent,
             "Accept-Language": "en-GB,en-US;q=0.9,en;q=0.8",
             "Accept-Encoding": "gzip, deflate, br",
             "Connection": "keep-alive",
+            "Cookie": "cf_clearance=" + self.cf_clearance
         }
+        self.debugger.log(headers)
 
-        response = self.session.get(url=url, headers=headers)
+        response = self.session.get(
+            url=url, headers=headers, cookies=self.cookie)
         if response.status_code == 200:
             self.part_two()
         else:
@@ -105,13 +111,13 @@ class OpenAIAuth:
             "Host": "ask.openai.com",
             "Accept": "*/*",
             "Connection": "keep-alive",
-            "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) "
-            "Version/16.1 Safari/605.1.15",
+            "User-Agent": self.user_agent,
             "Accept-Language": "en-GB,en-US;q=0.9,en;q=0.8",
             "Referer": "https://chat.openai.com/auth/login",
             "Accept-Encoding": "gzip, deflate, br",
         }
-        response = self.session.get(url=url, headers=headers)
+        response = self.session.get(
+            url=url, headers=headers, cookies=self.cookie)
         if response.status_code == 200 and "json" in response.headers["Content-Type"]:
             csrf_token = response.json()["csrfToken"]
             self.part_three(token=csrf_token)
@@ -136,14 +142,15 @@ class OpenAIAuth:
             "Origin": "https://chat.openai.com",
             "Connection": "keep-alive",
             "Accept": "*/*",
-            "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) "
-            "Version/16.1 Safari/605.1.15",
+            "User-Agent": self.user_agent,
             "Referer": "https://chat.openai.com/auth/login",
             "Content-Length": "100",
             "Accept-Language": "en-GB,en-US;q=0.9,en;q=0.8",
             "Content-Type": "application/x-www-form-urlencoded",
+            "Cookie": "cf_clearance=" + self.cf_clearance
         }
-        response = self.session.post(url=url, headers=headers, data=payload)
+        response = self.session.post(
+            url=url, headers=headers, data=payload, cookies=self.cookie)
         if response.status_code == 200 and "json" in response.headers["Content-Type"]:
             url = response.json()["url"]
             if url == "https://chat.openai.com/api/auth/error?error=OAuthSignin" or 'error' in url:
@@ -151,6 +158,7 @@ class OpenAIAuth:
                 raise Exception("You have been rate limited.")
             self.part_four(url=url)
         elif response.status_code == 400:
+            self.debugger.log(response.text)
             self.debugger.log("Error in part three")
             self.debugger.log("Invalid credentials")
             raise Exception("Invalid credentials")
@@ -178,7 +186,8 @@ class OpenAIAuth:
             "Accept-Language": "en-US,en;q=0.9",
             "Referer": "https://chat.openai.com/",
         }
-        response = self.session.get(url=url, headers=headers)
+        response = self.session.get(
+            url=url, headers=headers, cookies=self.cookie)
         if response.status_code == 302:
             try:
                 state = re.findall(r"state=(.*)", response.text)[0]
@@ -216,7 +225,7 @@ class OpenAIAuth:
             "Accept-Language": "en-US,en;q=0.9",
             "Referer": "https://chat.openai.com/",
         }
-        response = self.session.get(url, headers=headers)
+        response = self.session.get(url, headers=headers, cookies=self.cookie)
         if response.status_code == 200:
             captcha_code = None
             if re.search(r'<img[^>]+alt="captcha"[^>]+>', response.text):
@@ -282,7 +291,8 @@ class OpenAIAuth:
             "Accept-Language": "en-US,en;q=0.9",
             "Content-Type": "application/x-www-form-urlencoded",
         }
-        response = self.session.post(url, headers=headers, data=payload)
+        response = self.session.post(
+            url, headers=headers, data=payload, cookies=self.cookie)
         if response.status_code == 302:
             self.part_seven(state=state)
         else:
@@ -316,7 +326,8 @@ class OpenAIAuth:
             "Content-Type": "application/x-www-form-urlencoded",
         }
         try:
-            response = self.session.post(url, headers=headers, data=payload)
+            response = self.session.post(
+                url, headers=headers, data=payload, cookies=self.cookie)
             self.debugger.log("Request went through")
         except Exception as exc:
             self.debugger.log("Error in part seven")
@@ -358,7 +369,8 @@ class OpenAIAuth:
             "Accept-Language": "en-GB,en-US;q=0.9,en;q=0.8",
             "Referer": f"https://auth0.openai.com/u/login/password?state={old_state}",
         }
-        response = self.session.get(url, headers=headers, allow_redirects=True)
+        response = self.session.get(
+            url, headers=headers, allow_redirects=True, cookies=self.cookie)
         is_200 = response.status_code == 200
         if is_200:
             # Access Token
@@ -411,7 +423,7 @@ class OpenAIAuth:
             "Referer": "https://chat.openai.com/chat",
             "Accept-Encoding": "gzip, deflate, br",
         }
-        response = self.session.get(url, headers=headers)
+        response = self.session.get(url, headers=headers, cookies=self.cookie)
         is_200 = response.status_code == 200
         if is_200:
             # Get session token
