@@ -28,9 +28,6 @@ class OpenAIAuth:
         proxy: str = None,
         debug: bool = False,
         use_captcha: bool = False,
-        captcha_solver: any = None,
-        cf_clearance: str = None,
-        user_agent: str = None,
     ):
         self.session_token = None
         self.email_address = email_address
@@ -39,12 +36,10 @@ class OpenAIAuth:
         self.session = tls_client.Session(
             client_identifier="chrome_109",
         )
-        self.session.cookies.set("cf_clearance", cf_clearance)
         self.access_token: str = None
         self.debugger = Debugger(debug)
         self.use_capcha = use_captcha
-        self.captcha_solver: any = captcha_solver
-        self.user_agent = user_agent
+        self.user_agent = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/109.0.0.0 Safari/537.36"
 
     @staticmethod
     def url_encode(string: str) -> str:
@@ -226,30 +221,6 @@ class OpenAIAuth:
         response = self.session.get(url, headers=headers)
         if response.status_code == 200:
             captcha_code = None
-            if re.search(r'<img[^>]+alt="captcha"[^>]+>', response.text):
-                self.debugger.log("Captcha detected")
-                if self.use_capcha == False:
-                    self.debugger.log("Captcha detected but not used")
-                    raise Exception("Captcha detected but not used")
-                pattern = re.compile(
-                    r'<img[^>]+alt="captcha"[^>]+src="(.+?)"[^>]+>',
-                )
-                match = pattern.search(response.text)
-                if match and self.captcha_solver:
-                    captcha = match.group(1)
-                    self.debugger.log("Captcha extracted")
-                    # Save captcha (in JavaScript src format) to real svg file
-                    captcha = captcha.replace("data:image/svg+xml;base64,", "")
-                    # Convert base64 to svg
-                    captcha = base64.b64decode(captcha)
-                    captcha = captcha.decode("utf-8")
-                    # Save captcha to file
-                    captcha_code = self.captcha_solver.solve_captcha(
-                        captcha,
-                    )
-                else:
-                    self.debugger.log("Failed to find captcha")
-                    raise ValueError("Captcha detected")
             self.part_six(state=state, captcha=captcha_code)
         else:
             self.debugger.log("Error in part five")
