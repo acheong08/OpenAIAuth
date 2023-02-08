@@ -70,8 +70,8 @@ class OpenAIAuth:
             }
             self.session.proxies = proxies
 
-        # First, make a request to https://chat.openai.com/auth/login
-        url = "https://chat.openai.com/auth/login"
+        # First, make a request to https://explorer.api.openai.com/auth/login
+        url = "https://explorer.api.openai.com/"
         headers = {
             "Host": "ask.openai.com",
             "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
@@ -97,18 +97,18 @@ class OpenAIAuth:
 
     def part_two(self) -> None:
         """
-        In part two, We make a request to https://chat.openai.com/api/auth/csrf and grab a fresh csrf token
+        In part two, We make a request to https://explorer.api.openai.com/api/auth/csrf and grab a fresh csrf token
         """
         self.debugger.log("Beginning part two")
 
-        url = "https://chat.openai.com/api/auth/csrf"
+        url = "https://explorer.api.openai.com/api/auth/csrf"
         headers = {
             "Host": "ask.openai.com",
             "Accept": "*/*",
             "Connection": "keep-alive",
             "User-Agent": self.user_agent,
             "Accept-Language": "en-GB,en-US;q=0.9,en;q=0.8",
-            "Referer": "https://chat.openai.com/auth/login",
+            "Referer": "https://explorer.api.openai.com/auth/login",
             "Accept-Encoding": "gzip, deflate, br",
         }
         response = self.session.get(
@@ -131,20 +131,20 @@ class OpenAIAuth:
         We reuse the token from part to make a request to /api/auth/signin/auth0?prompt=login
         """
         self.debugger.log("Beginning part three")
-        url = "https://chat.openai.com/api/auth/signin/auth0?prompt=login"
+        url = "https://explorer.api.openai.com/api/auth/signin/auth0?prompt=login"
         payload = f"callbackUrl=%2F&csrfToken={token}&json=true"
         headers = {
-            "Host": "chat.openai.com",
+            "Host": "explorer.api.openai.com",
             "User-Agent": self.user_agent,
             "Content-Type": "application/x-www-form-urlencoded",
             "Accept": "*/*",
             "Sec-Gpc": "1",
             "Accept-Language": "en-US,en;q=0.8",
-            "Origin": "https://chat.openai.com",
+            "Origin": "https://explorer.api.openai.com",
             "Sec-Fetch-Site": "same-origin",
             "Sec-Fetch-Mode": "cors",
             "Sec-Fetch-Dest": "empty",
-            "Referer": "https://chat.openai.com/auth/login",
+            "Referer": "https://explorer.api.openai.com/auth/login",
             "Accept-Encoding": "gzip, deflate",
         }
         self.debugger.log("Payload: " + payload)
@@ -153,7 +153,7 @@ class OpenAIAuth:
         if response.status_code == 200 and "json" in response.headers["Content-Type"]:
             url = response.json()["url"]
             if (
-                url == "https://chat.openai.com/api/auth/error?error=OAuthSignin"
+                url == "https://explorer.api.openai.com/api/auth/error?error=OAuthSignin"
                 or "error" in url
             ):
                 self.debugger.log("You have been rate limited")
@@ -181,7 +181,7 @@ class OpenAIAuth:
             "Connection": "keep-alive",
             "User-Agent": self.user_agent,
             "Accept-Language": "en-US,en;q=0.9",
-            "Referer": "https://chat.openai.com/",
+            "Referer": "https://explorer.api.openai.com/",
         }
         response = self.session.get(
             url=url,
@@ -221,7 +221,7 @@ class OpenAIAuth:
             "Connection": "keep-alive",
             "User-Agent": self.user_agent,
             "Accept-Language": "en-US,en;q=0.9",
-            "Referer": "https://chat.openai.com/",
+            "Referer": "https://explorer.api.openai.com/",
         }
         response = self.session.get(url, headers=headers)
         if response.status_code == 200:
@@ -367,41 +367,8 @@ class OpenAIAuth:
         response = self.session.get(
             url,
             headers=headers,
-            allow_redirects=False,
+            allow_redirects=True,
         )
-        is_200 = response.status_code == 302
-        if is_200:
-            # Find <a href="*"> using re
-            callback = re.search("<a href=\"(.*)\">", response.text).group(1)
-            self.debugger.log("Callback found")
-            self.__part_nine(callback)
-        else:
-            self.debugger.log(f"Incorrect response code in part eight: {response.status_code}")
-            # Print cookies
-            self.debugger.log(f"Cookies: {self.session.cookies.get_dict()}")
-            raise Exception("Incorrect response code")
-    def __part_nine(self, callback: str):
-        self.debugger.log("Beginning part nine")
-        headers = {
-            "Host": "chat.openai.com",
-            "User-Agent": self.user_agent,
-            "Accept-Language": "en-GB,en-US;q=0.9,en;q=0.8",
-            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-            "Accept-Encoding": "gzip, deflate, br",
-            "Connection": "keep-alive",
-        }
-        response = self.session.get(
-            url=callback,
-            headers=headers,
-        )
-        if response.status_code == 302:
-            self.debugger.log("Part nine successful")
-            # Get cookies
-            self.session_token = response.cookies.get("__Secure-next-auth.session-token")
-            self.debugger.log(f"Cookies: {response.cookies.get_dict()}")
-            self.debugger.log(f"Headers: {response.headers}")
-            # Callback
-            self.debugger.log(f"Callback successful: {callback}")
-        else:
-            self.debugger.log(f"Error in part nine: {response.status_code}")
-            raise Exception("Incorrect response code")
+        if response.status_code == 200:
+            self.debugger.log(response.cookies.get_dict())
+            self.session_token = response.cookies.get_dict()["__Secure-next-auth.session-token"]
