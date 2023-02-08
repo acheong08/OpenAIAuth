@@ -341,5 +341,4 @@ class OpenAIAuth:
             allow_redirects=True,
         )
         if response.status_code == 200:
-            self.debugger.log(response.cookies.get_dict())
             self.session_token = response.cookies.get_dict()["__Secure-next-auth.session-token"]
