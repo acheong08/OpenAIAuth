@@ -346,15 +346,7 @@ class OpenAIAuth:
                 self.debugger.log("New state found")
                 self.part_eight(old_state=state, new_state=new_state)
             except Exception as exc:
-                self.debugger.log("Error in part seven")
-                self.debugger.log("Exception: ", end="")
-                self.debugger.log(exc)
-                raise Exception("State not found") from exc
-        elif response.status_code == 400:
-            self.debugger.log("Error in part seven")
-            self.debugger.log("Status code: ", end="")
-            self.debugger.log(response.status_code)
-            raise Exception("Wrong email or password")
+                raise Exception("Could not find new state") from exc
         else:
             self.debugger.log("Error in part seven")
             self.debugger.log("Status code: ", end="")
@@ -375,67 +367,41 @@ class OpenAIAuth:
         response = self.session.get(
             url,
             headers=headers,
-            allow_redirects=True,
+            allow_redirects=False,
         )
         is_200 = response.status_code == 302
         if is_200:
             # Find <a href="*"> using re
             callback = re.search("<a href=\"(.*)\">", response.text).group(1)
             self.debugger.log("Callback found")
-            self.session.get(url=callback)
-            self.debugger.log("Callback went through")
-            self.part_nine()
+            self.__part_nine(callback)
         else:
             self.debugger.log(f"Incorrect response code in part eight: {response.status_code}")
-            self.debugger.log(f"Response: {response.headers}")
-            self.debugger.log(f"New State: {new_state}")
-            self.debugger.log(f"Old State: {old_state}")
             # Print cookies
             self.debugger.log(f"Cookies: {self.session.cookies.get_dict()}")
             raise Exception("Incorrect response code")
-
-    def save_access_token(self, access_token: str) -> None:
-        """
-        Save access_token and an hour from now on ./Classes/auth.json
-        :param access_token:
-        :return:
-        """
-        self.access_token = access_token
-
-    def part_nine(self) -> bool:
+    def __part_nine(self, callback: str):
         self.debugger.log("Beginning part nine")
-        url = "https://chat.openai.com/api/auth/session"
         headers = {
-            "Host": "ask.openai.com",
-            "Connection": "keep-alive",
-            "If-None-Match": '"bwc9mymkdm2"',
-            "Accept": "*/*",
+            "Host": "chat.openai.com",
             "User-Agent": self.user_agent,
             "Accept-Language": "en-GB,en-US;q=0.9,en;q=0.8",
-            "Referer": "https://chat.openai.com/chat",
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
             "Accept-Encoding": "gzip, deflate, br",
+            "Connection": "keep-alive",
         }
-        response = self.session.get(url, headers=headers)
-        is_200 = response.status_code == 200
-        if is_200:
-            # Get session token
-            self.session_token = response.cookies.get(
-                "__Secure-next-auth.session-token",
-            )
-            if "json" in response.headers["Content-Type"]:
-                json_response = response.json()
-                access_token = json_response["accessToken"]
-                self.save_access_token(access_token=access_token)
-                self.debugger.log("SUCCESS")
-                return True
-            else:
-                self.debugger.log(
-                    "Please try again with a proxy (or use a new proxy if you are using one)",
-                )
+        response = self.session.get(
+            url=callback,
+            headers=headers,
+        )
+        if response.status_code == 302:
+            self.debugger.log("Part nine successful")
+            # Get cookies
+            self.session_token = response.cookies.get("__Secure-next-auth.session-token")
+            self.debugger.log(f"Cookies: {response.cookies.get_dict()}")
+            self.debugger.log(f"Headers: {response.headers}")
+            # Callback
+            self.debugger.log(f"Callback successful: {callback}")
         else:
-            self.debugger.log(
-                "Please try again with a proxy (or use a new proxy if you are using one)",
-            )
-        self.session_token = None
-        self.debugger.log("Failed to get session token")
-        raise Exception("Failed to get session token")
+            self.debugger.log(f"Error in part nine: {response.status_code}")
+            raise Exception("Incorrect response code")
