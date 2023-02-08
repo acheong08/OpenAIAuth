@@ -37,7 +37,7 @@ class OpenAIAuth:
         self.password = password
         self.proxy = proxy
         self.session = tls_client.Session(
-            client_identifier="chrome_105",
+            client_identifier="chrome_109",
         )
         self.session.cookies.set("cf_clearance", cf_clearance)
         self.access_token: str = None
@@ -131,12 +131,10 @@ class OpenAIAuth:
         We reuse the token from part to make a request to /api/auth/signin/auth0?prompt=login
         """
         self.debugger.log("Beginning part three")
-        self.session.cookies.clear()  # DEBUG
         url = "https://chat.openai.com/api/auth/signin/auth0?prompt=login"
         payload = f"callbackUrl=%2F&csrfToken={token}&json=true"
         headers = {
             "Host": "chat.openai.com",
-            "Content-Length": str(len(payload)),
             "User-Agent": self.user_agent,
             "Content-Type": "application/x-www-form-urlencoded",
             "Accept": "*/*",
@@ -151,7 +149,6 @@ class OpenAIAuth:
         }
         self.debugger.log("Payload: " + payload)
         self.debugger.log("Payload length: " + str(len(payload)))
-        self.debugger.log("Content length: " + headers["Content-Length"])
         response = self.session.post(url=url, headers=headers, data=payload)
         if response.status_code == 200 and "json" in response.headers["Content-Type"]:
             url = response.json()["url"]
@@ -165,10 +162,10 @@ class OpenAIAuth:
         else:
             self.debugger.log("Error in part three")
             self.debugger.log("Response: ", end="")
-            self.debugger.log(response.text)
             self.debugger.log("Status code: ", end="")
             self.debugger.log(response.status_code)
             self.debugger.log(response.headers)
+            self.debugger.log(self.session.cookies.get_dict())
             raise Exception("Unknown error")
 
     def part_four(self, url: str) -> None:
@@ -182,8 +179,7 @@ class OpenAIAuth:
             "Host": "auth0.openai.com",
             "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
             "Connection": "keep-alive",
-            "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) "
-            "Version/16.1 Safari/605.1.15",
+            "User-Agent": self.user_agent,
             "Accept-Language": "en-US,en;q=0.9",
             "Referer": "https://chat.openai.com/",
         }
@@ -223,8 +219,7 @@ class OpenAIAuth:
             "Host": "auth0.openai.com",
             "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
             "Connection": "keep-alive",
-            "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) "
-            "Version/16.1 Safari/605.1.15",
+            "User-Agent": self.user_agent,
             "Accept-Language": "en-US,en;q=0.9",
             "Referer": "https://chat.openai.com/",
         }
@@ -290,8 +285,7 @@ class OpenAIAuth:
             "Origin": "https://auth0.openai.com",
             "Connection": "keep-alive",
             "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-            "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) "
-            "Version/16.1 Safari/605.1.15",
+            "User-Agent": self.user_agent,
             "Referer": f"https://auth0.openai.com/u/login/identifier?state={state}",
             "Accept-Language": "en-US,en;q=0.9",
             "Content-Type": "application/x-www-form-urlencoded",
@@ -327,8 +321,7 @@ class OpenAIAuth:
             "Origin": "https://auth0.openai.com",
             "Connection": "keep-alive",
             "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-            "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) "
-            "Version/16.1 Safari/605.1.15",
+            "User-Agent": self.user_agent,
             "Referer": f"https://auth0.openai.com/u/login/password?state={state}",
             "Accept-Language": "en-US,en;q=0.9",
             "Content-Type": "application/x-www-form-urlencoded",
@@ -375,8 +368,7 @@ class OpenAIAuth:
             "Host": "auth0.openai.com",
             "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
             "Connection": "keep-alive",
-            "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) "
-            "Version/16.1 Safari/605.1.15",
+            "User-Agent": self.user_agent,
             "Accept-Language": "en-GB,en-US;q=0.9,en;q=0.8",
             "Referer": f"https://auth0.openai.com/u/login/password?state={old_state}",
         }
@@ -385,34 +377,21 @@ class OpenAIAuth:
             headers=headers,
             allow_redirects=True,
         )
-        is_200 = response.status_code == 200
+        is_200 = response.status_code == 302
         if is_200:
-            # Access Token
-            access_token = re.findall(
-                r"accessToken\":\"(.*)\"",
-                response.text,
-            )
-            if access_token:
-                try:
-                    access_token = access_token[0]
-                    access_token = access_token.split('"')[0]
-                except Exception as e:
-                    self.debugger.log("Error in part eight")
-                    self.debugger.log("Response: ", end="")
-                    self.debugger.log(response.text)
-                    self.debugger.log("Status code: ", end="")
-                    self.debugger.log(response.status_code)
-                    raise e
-            else:
-                self.debugger.log("Error in part eight")
-                self.debugger.log("Response: ", end="")
-                self.debugger.log(response.text)
-                self.debugger.log("Status code: ", end="")
-                self.debugger.log(response.status_code)
-                raise Exception("Auth0 did not issue an access token")
+            # Find <a href="*"> using re
+            callback = re.search("<a href=\"(.*)\">", response.text).group(1)
+            self.debugger.log("Callback found")
+            self.session.get(url=callback)
+            self.debugger.log("Callback went through")
             self.part_nine()
         else:
-            self.debugger.log("Incorrect response code in part eight")
+            self.debugger.log(f"Incorrect response code in part eight: {response.status_code}")
+            self.debugger.log(f"Response: {response.headers}")
+            self.debugger.log(f"New State: {new_state}")
+            self.debugger.log(f"Old State: {old_state}")
+            # Print cookies
+            self.debugger.log(f"Cookies: {self.session.cookies.get_dict()}")
             raise Exception("Incorrect response code")
 
     def save_access_token(self, access_token: str) -> None:
@@ -431,8 +410,7 @@ class OpenAIAuth:
             "Connection": "keep-alive",
             "If-None-Match": '"bwc9mymkdm2"',
             "Accept": "*/*",
-            "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) "
-            "Version/16.1 Safari/605.1.15",
+            "User-Agent": self.user_agent,
             "Accept-Language": "en-GB,en-US;q=0.9,en;q=0.8",
             "Referer": "https://chat.openai.com/chat",
             "Accept-Encoding": "gzip, deflate, br",
