@@ -1,7 +1,7 @@
 # Credits to github.com/rawandahmad698/PyChatGPT
+import base64
 import re
 import urllib
-import base64
 
 import tls_client
 
@@ -37,7 +37,7 @@ class OpenAIAuth:
         self.password = password
         self.proxy = proxy
         self.session = tls_client.Session(
-            client_identifier="chrome_105"
+            client_identifier="chrome_105",
         )
         self.session.cookies.set("cf_clearance", cf_clearance)
         self.access_token: str = None
@@ -82,7 +82,9 @@ class OpenAIAuth:
         }
 
         response = self.session.get(
-            url=url, headers=headers)
+            url=url,
+            headers=headers,
+        )
         if response.status_code == 200:
             self.part_two()
         else:
@@ -110,7 +112,9 @@ class OpenAIAuth:
             "Accept-Encoding": "gzip, deflate, br",
         }
         response = self.session.get(
-            url=url, headers=headers)
+            url=url,
+            headers=headers,
+        )
         if response.status_code == 200 and "json" in response.headers["Content-Type"]:
             csrf_token = response.json()["csrfToken"]
             self.part_three(token=csrf_token)
@@ -129,7 +133,7 @@ class OpenAIAuth:
         self.debugger.log("Beginning part three")
         self.session.cookies.clear()  # DEBUG
         url = "https://chat.openai.com/api/auth/signin/auth0?prompt=login"
-        payload = f'callbackUrl=%2F&csrfToken={token}&json=true'
+        payload = f"callbackUrl=%2F&csrfToken={token}&json=true"
         headers = {
             "Host": "chat.openai.com",
             "Content-Length": str(len(payload)),
@@ -151,7 +155,10 @@ class OpenAIAuth:
         response = self.session.post(url=url, headers=headers, data=payload)
         if response.status_code == 200 and "json" in response.headers["Content-Type"]:
             url = response.json()["url"]
-            if url == "https://chat.openai.com/api/auth/error?error=OAuthSignin" or 'error' in url:
+            if (
+                url == "https://chat.openai.com/api/auth/error?error=OAuthSignin"
+                or "error" in url
+            ):
                 self.debugger.log("You have been rate limited")
                 raise Exception("You have been rate limited.")
             self.part_four(url=url)
@@ -181,7 +188,9 @@ class OpenAIAuth:
             "Referer": "https://chat.openai.com/",
         }
         response = self.session.get(
-            url=url, headers=headers)
+            url=url,
+            headers=headers,
+        )
         if response.status_code == 302:
             try:
                 state = re.findall(r"state=(.*)", response.text)[0]
@@ -228,7 +237,8 @@ class OpenAIAuth:
                     self.debugger.log("Captcha detected but not used")
                     raise Exception("Captcha detected but not used")
                 pattern = re.compile(
-                    r'<img[^>]+alt="captcha"[^>]+src="(.+?)"[^>]+>')
+                    r'<img[^>]+alt="captcha"[^>]+src="(.+?)"[^>]+>',
+                )
                 match = pattern.search(response.text)
                 if match and self.captcha_solver:
                     captcha = match.group(1)
@@ -240,7 +250,8 @@ class OpenAIAuth:
                     captcha = captcha.decode("utf-8")
                     # Save captcha to file
                     captcha_code = self.captcha_solver.solve_captcha(
-                        captcha)
+                        captcha,
+                    )
                 else:
                     self.debugger.log("Failed to find captcha")
                     raise ValueError("Captcha detected")
@@ -286,7 +297,10 @@ class OpenAIAuth:
             "Content-Type": "application/x-www-form-urlencoded",
         }
         response = self.session.post(
-            url, headers=headers, data=payload)
+            url,
+            headers=headers,
+            data=payload,
+        )
         if response.status_code == 302:
             self.part_seven(state=state)
         else:
@@ -321,7 +335,10 @@ class OpenAIAuth:
         }
         try:
             response = self.session.post(
-                url, headers=headers, data=payload)
+                url,
+                headers=headers,
+                data=payload,
+            )
             self.debugger.log("Request went through")
         except Exception as exc:
             self.debugger.log("Error in part seven")
@@ -364,7 +381,10 @@ class OpenAIAuth:
             "Referer": f"https://auth0.openai.com/u/login/password?state={old_state}",
         }
         response = self.session.get(
-            url, headers=headers, allow_redirects=True)
+            url,
+            headers=headers,
+            allow_redirects=True,
+        )
         is_200 = response.status_code == 200
         if is_200:
             # Access Token
@@ -424,18 +444,20 @@ class OpenAIAuth:
             self.session_token = response.cookies.get(
                 "__Secure-next-auth.session-token",
             )
-            if 'json' in response.headers['Content-Type']:
+            if "json" in response.headers["Content-Type"]:
                 json_response = response.json()
-                access_token = json_response['accessToken']
+                access_token = json_response["accessToken"]
                 self.save_access_token(access_token=access_token)
                 self.debugger.log("SUCCESS")
                 return True
             else:
                 self.debugger.log(
-                    "Please try again with a proxy (or use a new proxy if you are using one)")
+                    "Please try again with a proxy (or use a new proxy if you are using one)",
+                )
         else:
             self.debugger.log(
-                "Please try again with a proxy (or use a new proxy if you are using one)")
+                "Please try again with a proxy (or use a new proxy if you are using one)",
+            )
         self.session_token = None
         self.debugger.log("Failed to get session token")
         raise Exception("Failed to get session token")

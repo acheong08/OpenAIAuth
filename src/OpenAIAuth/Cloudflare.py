@@ -1,10 +1,10 @@
 """
 Gets cf_clearance details
 """
-
-from time import sleep
-import undetected_chromedriver as uc
 import re
+from time import sleep
+
+import undetected_chromedriver as uc
 
 
 class Cloudflare:
@@ -12,12 +12,17 @@ class Cloudflare:
     Gets cloudflare clearance via browser automation.
     """
 
-    def __init__(self, proxy: str = None, driver_exec_path:str = None, browser_exec_path:str = None) -> None:
-        self.proxy:str = proxy
+    def __init__(
+        self,
+        proxy: str = None,
+        driver_exec_path: str = None,
+        browser_exec_path: str = None,
+    ) -> None:
+        self.proxy: str = proxy
         self.cf_clearance: str = None
         self.user_agent: str = None
-        self.driver_exec_path:str = driver_exec_path
-        self.browser_exec_path:str = browser_exec_path
+        self.driver_exec_path: str = driver_exec_path
+        self.browser_exec_path: str = browser_exec_path
         self.cf_cookie_found: bool = False
         self.agent_found: bool = False
 
@@ -33,7 +38,7 @@ class Cloudflare:
         if self.proxy:
             options.add_argument("--proxy-server=" + self.proxy)
         return options
-    
+
     def __detect_cookies(self, message):
         if "params" in message:
             if "headers" in message["params"]:
@@ -58,7 +63,7 @@ class Cloudflare:
                     user_agent = message["params"]["headers"]["user-agent"]
                     self.user_agent = user_agent
                     self.agent_found = True
-                    
+
     def get_cf_cookies(self) -> tuple:
         """
         Get cloudflare cookies.
