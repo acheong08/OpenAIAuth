@@ -96,9 +96,9 @@ class Cloudflare:
             driver.get("https://chat.openai.com/chat")
             while not self.agent_found or not self.cf_cookie_found:
                 sleep(5)
-            return self.cf_clearance, self.user_agent
         finally:
             # Close the browser
             if driver is not None:
                 driver.quit()
                 del driver
+        return self.cf_clearance, self.user_agent
