@@ -27,7 +27,7 @@ class OpenAIAuth:
         password: str,
         proxy: str = None,
         debug: bool = False,
-        use_captcha: bool = True,
+        use_captcha: bool = False,
         captcha_solver: any = None,
         cf_clearance: str = None,
         user_agent: str = None,
