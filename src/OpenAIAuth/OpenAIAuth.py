@@ -146,7 +146,8 @@ class OpenAIAuth:
         if response.status_code == 200 and "json" in response.headers["Content-Type"]:
             url = response.json()["url"]
             if (
-                url == "https://explorer.api.openai.com/api/auth/error?error=OAuthSignin"
+                url
+                == "https://explorer.api.openai.com/api/auth/error?error=OAuthSignin"
                 or "error" in url
             ):
                 self.debugger.log("You have been rate limited")
@@ -332,8 +333,10 @@ class OpenAIAuth:
             allow_redirects=True,
         )
         if response.status_code == 200:
-            self.session_token = response.cookies.get_dict()["__Secure-next-auth.session-token"]
-    
+            self.session_token = response.cookies.get_dict()[
+                "__Secure-next-auth.session-token"
+            ]
+
     def get_access_token(self):
         """
         Gets access token
