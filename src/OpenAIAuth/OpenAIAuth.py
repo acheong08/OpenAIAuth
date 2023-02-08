@@ -342,3 +342,20 @@ class OpenAIAuth:
         )
         if response.status_code == 200:
             self.session_token = response.cookies.get_dict()["__Secure-next-auth.session-token"]
+    
+    def get_access_token(self):
+        """
+        Gets access token
+        """
+        response = self.session.get(
+            "https://explorer.api.openai.com/api/auth/session",
+        )
+        if response.status_code == 200:
+            self.access_token = response.json()["accessToken"]
+            self.debugger.log("Access token found")
+            return self.access_token
+        else:
+            self.debugger.log("Error in part nine")
+            self.debugger.log("Status code: ", end="")
+            self.debugger.log(response.status_code)
+            raise Exception("Wrong status code")
