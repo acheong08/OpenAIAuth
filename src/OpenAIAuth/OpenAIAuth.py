@@ -27,7 +27,6 @@ class OpenAIAuth:
         password: str,
         proxy: str = None,
         debug: bool = False,
-        use_captcha: bool = False,
     ):
         self.session_token = None
         self.email_address = email_address
@@ -38,7 +37,6 @@ class OpenAIAuth:
         )
         self.access_token: str = None
         self.debugger = Debugger(debug)
-        self.use_capcha = use_captcha
         self.user_agent = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/109.0.0.0 Safari/537.36"
 
     @staticmethod
@@ -220,8 +218,7 @@ class OpenAIAuth:
         }
         response = self.session.get(url, headers=headers)
         if response.status_code == 200:
-            captcha_code = None
-            self.__part_six(state=state, captcha=captcha_code)
+            self.__part_six(state=state)
         else:
             self.debugger.log("Error in part five")
             self.debugger.log("Response: ", end="")
@@ -230,26 +227,20 @@ class OpenAIAuth:
             self.debugger.log(response.status_code)
             raise ValueError("Invalid response code")
 
-    def __part_six(self, state: str, captcha: str or None) -> None:
+    def __part_six(self, state: str) -> None:
         """
         We make a POST request to the login page with the captcha, email
         :param state:
-        :param captcha:
         :return:
         """
         self.debugger.log("Beginning part six")
         url = f"https://auth0.openai.com/u/login/identifier?state={state}"
         email_url_encoded = self.url_encode(self.email_address)
-        payload = (
-            f"state={state}&username={email_url_encoded}&captcha={captcha}&js-available=true&webauthn-available"
-            f"=true&is-brave=false&webauthn-platform-available=true&action=default "
-        )
 
-        if captcha is None:
-            payload = (
-                f"state={state}&username={email_url_encoded}&js-available=false&webauthn-available=true&is"
-                f"-brave=false&webauthn-platform-available=true&action=default "
-            )
+        payload = (
+            f"state={state}&username={email_url_encoded}&js-available=false&webauthn-available=true&is"
+            f"-brave=false&webauthn-platform-available=true&action=default "
+        )
 
         headers = {
             "Host": "auth0.openai.com",
