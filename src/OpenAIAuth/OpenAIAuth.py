@@ -1,5 +1,4 @@
 # Credits to github.com/rawandahmad698/PyChatGPT
-import base64
 import re
 import urllib
 
