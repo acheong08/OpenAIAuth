@@ -335,8 +335,9 @@ class OpenAIAuth:
             self.session_token = response.cookies.get_dict()[
                 "__Secure-next-auth.session-token"
             ]
+            self.__get_access_token()
 
-    def get_access_token(self):
+    def __get_access_token(self):
         """
         Gets access token
         """
