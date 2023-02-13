@@ -335,12 +335,16 @@ class OpenAIAuth:
             self.session_token = response.cookies.get_dict()[
                 "__Secure-next-auth.session-token"
             ]
-            self.__get_access_token()
+            self.get_access_token()
 
-    def __get_access_token(self):
+    def get_access_token(self):
         """
         Gets access token
         """
+        self.session.cookies.set(
+            "__Secure-next-auth.session-token",
+            self.session_token,
+        )
         response = self.session.get(
             "https://explorer.api.openai.com/api/auth/session",
         )
