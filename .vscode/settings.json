@@ -1,5 +1,8 @@
 {
   "python.linting.flake8Enabled": false,
   "python.linting.enabled": true,
-  "python.linting.pylintEnabled": true
+  "python.linting.pylintEnabled": true,
+  "cSpell.words": [
+    "webauthn"
+  ]
 }

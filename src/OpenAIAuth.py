@@ -1,6 +1,7 @@
 # Credits to github.com/rawandahmad698/PyChatGPT
 import re
 import urllib
+
 import requests
 
 
@@ -19,7 +20,11 @@ class Error(Exception):
         self.details = details
 
 
-class OpenAIAuth:
+class Authenticator:
+    """
+    OpenAI Authentication Reverse Engineered
+    """
+
     def __init__(
         self,
         email_address: str,
@@ -224,7 +229,10 @@ class OpenAIAuth:
             "Content-Type": "application/x-www-form-urlencoded",
         }
         response = self.session.post(
-            url, headers=headers, allow_redirects=False, data=payload
+            url,
+            headers=headers,
+            allow_redirects=False,
+            data=payload,
         )
         if response.status_code == 302 or response.status_code == 200:
             new_state = re.findall(r"state=(.*)", response.text)[0]
@@ -280,7 +288,7 @@ class OpenAIAuth:
         )
         if response.status_code == 302:
             self.session_token = response.cookies.get(
-                "__Secure-next-auth.session-token"
+                "__Secure-next-auth.session-token",
             )
             self.get_access_token()
         else:
