@@ -301,4 +301,8 @@ class OpenAIAuth:
             self.access_token = response.json()["accessToken"]
             return self.access_token
         else:
-            raise Exception("Wrong status code")
+            raise Error(
+                location="get_access_token",
+                status_code=response.status_code,
+                details=response.text,
+            )
