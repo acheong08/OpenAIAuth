@@ -99,7 +99,11 @@ class OpenAIAuth:
                 == "https://explorer.api.openai.com/api/auth/error?error=OAuthSignin"
                 or "error" in url
             ):
-                raise Exception("You have been rate limited.")
+                raise Error(
+                    location="__part_one",
+                    status_code=response.status_code,
+                    details="You have been rate limited. Please try again later.",
+                )
             self.__part_two(url=url)
         else:
             raise Error(
@@ -196,7 +200,7 @@ class OpenAIAuth:
             raise Error(
                 location="__part_four",
                 status_code=response.status_code,
-                details=response.text,
+                details="Your email address is invalid.",
             )
 
     def __part_five(self, state: str) -> None:
@@ -230,7 +234,7 @@ class OpenAIAuth:
             raise Error(
                 location="__part_five",
                 status_code=response.status_code,
-                details=response.text,
+                details="Your credentials are invalid.",
             )
 
     def __part_six(self, old_state: str, new_state) -> None:
