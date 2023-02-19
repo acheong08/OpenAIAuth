@@ -36,6 +36,11 @@ class Authenticator:
         self.password = password
         self.proxy = proxy
         self.session = requests.Session()
+        proxies = {
+            "http": self.proxy,
+            "https": self.proxy,
+        }
+        self.session.proxies.update(proxies)
         self.access_token: str = None
         self.user_agent = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/109.0.0.0 Safari/537.36"
 
