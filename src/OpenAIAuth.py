@@ -75,11 +75,12 @@ class Authenticator:
             csrf_token = response.json()["csrfToken"]
             self.__part_one(token=csrf_token)
         else:
-            raise Error(
+            error = Error(
                 location="begin",
                 status_code=response.status_code,
                 details=response.text,
             )
+            raise error
 
     def __part_one(self, token: str) -> None:
         """
@@ -109,18 +110,20 @@ class Authenticator:
                 == "https://explorer.api.openai.com/api/auth/error?error=OAuthSignin"
                 or "error" in url
             ):
-                raise Error(
+                error = Error(
                     location="__part_one",
                     status_code=response.status_code,
                     details="You have been rate limited. Please try again later.",
                 )
+                raise error
             self.__part_two(url=url)
         else:
-            raise Error(
+            error = Error(
                 location="__part_one",
                 status_code=response.status_code,
                 details=response.text,
             )
+            raise error
 
     def __part_two(self, url: str) -> None:
         """
@@ -145,11 +148,12 @@ class Authenticator:
             state = state.split('"')[0]
             self.__part_three(state=state)
         else:
-            raise Error(
+            error = Error(
                 location="__part_two",
                 status_code=response.status_code,
                 details=response.text,
             )
+            raise error
 
     def __part_three(self, state: str) -> None:
         """
@@ -169,11 +173,12 @@ class Authenticator:
         if response.status_code == 200:
             self.__part_four(state=state)
         else:
-            raise Error(
+            error = Error(
                 location="__part_three",
                 status_code=response.status_code,
                 details=response.text,
             )
+            raise error
 
     def __part_four(self, state: str) -> None:
         """
@@ -207,11 +212,12 @@ class Authenticator:
         if response.status_code == 302 or response.status_code == 200:
             self.__part_five(state=state)
         else:
-            raise Error(
+            error = Error(
                 location="__part_four",
                 status_code=response.status_code,
                 details="Your email address is invalid.",
             )
+            raise error
 
     def __part_five(self, state: str) -> None:
         """
@@ -244,11 +250,12 @@ class Authenticator:
             new_state = new_state.split('"')[0]
             self.__part_six(old_state=state, new_state=new_state)
         else:
-            raise Error(
+            error = Error(
                 location="__part_five",
                 status_code=response.status_code,
                 details="Your credentials are invalid.",
             )
+            raise error
 
     def __part_six(self, old_state: str, new_state) -> None:
         url = f"https://auth0.openai.com/authorize/resume?state={new_state}"
@@ -270,11 +277,12 @@ class Authenticator:
             redirect_url = response.headers.get("location")
             self.__part_seven(redirect_url=redirect_url, previous_url=url)
         else:
-            raise Error(
+            error = Error(
                 location="__part_six",
                 status_code=response.status_code,
                 details=response.text,
             )
+            raise error
 
     def __part_seven(self, redirect_url: str, previous_url: str) -> None:
         url = redirect_url
@@ -297,11 +305,12 @@ class Authenticator:
             )
             self.get_access_token()
         else:
-            raise Error(
+            error = Error(
                 location="__part_seven",
                 status_code=response.status_code,
                 details=response.text,
             )
+            raise error
 
     def get_access_token(self):
         """
@@ -318,8 +327,9 @@ class Authenticator:
             self.access_token = response.json()["accessToken"]
             return self.access_token
         else:
-            raise Error(
+            error = Error(
                 location="get_access_token",
                 status_code=response.status_code,
                 details=response.text,
             )
+            raise error
