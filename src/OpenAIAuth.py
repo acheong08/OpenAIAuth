@@ -53,18 +53,19 @@ class Authenticator:
         """
         return urllib.parse.quote(string)
 
-    def __cookies(self) -> dict:
+    def __cookies(self, domain) -> dict:
         """
         Return cookies in a dictionary
         :return:
         """
         cookies = []
         for cookie in self.session.cookies:
-            cookies.append({"name": cookie.name, "value": cookie.value})
+            if domain in cookie.domain:
+                cookies.append({"name": cookie.name, "value": cookie.value})
         return cookies
 
-    def __cookie_string(self) -> str:
-        cookies = self.__cookies()
+    def __cookie_string(self, domain) -> str:
+        cookies = self.__cookies(domain)
         cookie_string = ""
         for cookie in cookies:
             cookie_string += f"{cookie['name']}={cookie['value']};"
@@ -83,7 +84,7 @@ class Authenticator:
             "Accept-Language": "en-GB,en-US;q=0.9,en;q=0.8",
             "Referer": "https://chat.openai.com/auth/login",
             "Accept-Encoding": "gzip, deflate, br",
-            "Cookie": self.__cookie_string(),
+            "Cookie": self.__cookie_string("chat.openai.com"),
         }
         response = self.session.get(
             url=url,
@@ -121,7 +122,7 @@ class Authenticator:
             "Sec-Fetch-Dest": "empty",
             "Referer": "https://chat.openai.com/auth/login",
             "Accept-Encoding": "gzip, deflate",
-            "Cookie": self.__cookie_string(),
+            "Cookie": self.__cookie_string("chat.openai.com"),
         }
         response = self.session.post(url=url, headers=headers, data=payload)
         if response.status_code == 200 and "json" in response.headers["Content-Type"]:
@@ -158,7 +159,7 @@ class Authenticator:
             "User-Agent": self.user_agent,
             "Accept-Language": "en-US,en;q=0.9",
             "Referer": "https://chat.openai.com/",
-            "Cookie": self.__cookie_string(),
+            "Cookie": self.__cookie_string("auth0.openai.com"),
         }
         response = self.session.get(
             url=url,
@@ -189,7 +190,7 @@ class Authenticator:
             "User-Agent": self.user_agent,
             "Accept-Language": "en-US,en;q=0.9",
             "Referer": "https://chat.openai.com/",
-            "Cookie": self.__cookie_string(),
+            "Cookie": self.__cookie_string("auth0.openai.com"),
         }
         response = self.session.get(url, headers=headers)
         if response.status_code == 200:
@@ -225,7 +226,7 @@ class Authenticator:
             "Referer": f"https://auth0.openai.com/u/login/identifier?state={state}",
             "Accept-Language": "en-US,en;q=0.9",
             "Content-Type": "application/x-www-form-urlencoded",
-            "Cookie": self.__cookie_string(),
+            "Cookie": self.__cookie_string("auth0.openai.com"),
         }
         response = self.session.post(
             url,
@@ -261,7 +262,7 @@ class Authenticator:
             "Referer": f"https://auth0.openai.com/u/login/password?state={state}",
             "Accept-Language": "en-US,en;q=0.9",
             "Content-Type": "application/x-www-form-urlencoded",
-            "Cookie": self.__cookie_string(),
+            "Cookie": self.__cookie_string("auth0.openai.com"),
         }
         response = self.session.post(
             url,
@@ -289,7 +290,7 @@ class Authenticator:
             "User-Agent": self.user_agent,
             "Accept-Language": "en-GB,en-US;q=0.9,en;q=0.8",
             "Referer": f"https://auth0.openai.com/u/login/password?state={old_state}",
-            "Cookie": self.__cookie_string(),
+            "Cookie": self.__cookie_string("auth0.openai.com"),
         }
         response = self.session.get(url, headers=headers, allow_redirects=False)
         if response.status_code == 302:
@@ -314,7 +315,7 @@ class Authenticator:
             "User-Agent": self.user_agent,
             "Accept-Language": "en-GB,en-US;q=0.9,en;q=0.8",
             "Referer": previous_url,
-            "Cookie": self.__cookie_string(),
+            "Cookie": self.__cookie_string("chat.openai.com"),
         }
         response = self.session.get(
             url, headers=headers, allow_redirects=False, cookies=self.session.cookies
