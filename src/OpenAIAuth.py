@@ -53,19 +53,37 @@ class Authenticator:
         """
         return urllib.parse.quote(string)
 
+    def __cookies(self) -> dict:
+        """
+        Return cookies in a dictionary
+        :return:
+        """
+        cookies = []
+        for cookie in self.session.cookies:
+            cookies.append({"name": cookie.name, "value": cookie.value})
+        return cookies
+
+    def __cookie_string(self) -> str:
+        cookies = self.__cookies()
+        cookie_string = ""
+        for cookie in cookies:
+            cookie_string += f"{cookie['name']}={cookie['value']};"
+        return cookie_string
+
     def begin(self) -> None:
         """
-        In part two, We make a request to https://explorer.api.openai.com/api/auth/csrf and grab a fresh csrf token
+        In part two, We make a request to https://chat.openai.com/api/auth/csrf and grab a fresh csrf token
         """
-        url = "https://explorer.api.openai.com/api/auth/csrf"
+        url = "http://127.0.0.1:8080/api/auth/csrf"
         headers = {
-            "Host": "explorer.api.openai.com",
+            "Host": "chat.openai.com",
             "Accept": "*/*",
             "Connection": "keep-alive",
             "User-Agent": self.user_agent,
             "Accept-Language": "en-GB,en-US;q=0.9,en;q=0.8",
-            "Referer": "https://explorer.api.openai.com/auth/login",
+            "Referer": "https://chat.openai.com/auth/login",
             "Accept-Encoding": "gzip, deflate, br",
+            "Cookie": self.__cookie_string(),
         }
         response = self.session.get(
             url=url,
@@ -73,6 +91,7 @@ class Authenticator:
         )
         if response.status_code == 200 and "json" in response.headers["Content-Type"]:
             csrf_token = response.json()["csrfToken"]
+            # self.session.cookies.set("__Host-next-auth.csrf-token", csrf_token)
             self.__part_one(token=csrf_token)
         else:
             error = Error(
@@ -80,34 +99,35 @@ class Authenticator:
                 status_code=response.status_code,
                 details=response.text,
             )
+            print(error.details)
             raise error
 
     def __part_one(self, token: str) -> None:
         """
         We reuse the token from part to make a request to /api/auth/signin/auth0?prompt=login
         """
-        url = "https://explorer.api.openai.com/api/auth/signin/auth0?prompt=login"
+        url = "http://127.0.0.1:8080/api/auth/signin/auth0?prompt=login"
         payload = f"callbackUrl=%2F&csrfToken={token}&json=true"
         headers = {
-            "Host": "explorer.api.openai.com",
+            "Host": "chat.openai.com",
             "User-Agent": self.user_agent,
             "Content-Type": "application/x-www-form-urlencoded",
             "Accept": "*/*",
             "Sec-Gpc": "1",
             "Accept-Language": "en-US,en;q=0.8",
-            "Origin": "https://explorer.api.openai.com",
+            "Origin": "https://chat.openai.com",
             "Sec-Fetch-Site": "same-origin",
             "Sec-Fetch-Mode": "cors",
             "Sec-Fetch-Dest": "empty",
-            "Referer": "https://explorer.api.openai.com/auth/login",
+            "Referer": "https://chat.openai.com/auth/login",
             "Accept-Encoding": "gzip, deflate",
+            "Cookie": self.__cookie_string(),
         }
         response = self.session.post(url=url, headers=headers, data=payload)
         if response.status_code == 200 and "json" in response.headers["Content-Type"]:
             url = response.json()["url"]
             if (
-                url
-                == "https://explorer.api.openai.com/api/auth/error?error=OAuthSignin"
+                url == "https://chat.openai.com/api/auth/error?error=OAuthSignin"
                 or "error" in url
             ):
                 error = Error(
@@ -137,7 +157,8 @@ class Authenticator:
             "Connection": "keep-alive",
             "User-Agent": self.user_agent,
             "Accept-Language": "en-US,en;q=0.9",
-            "Referer": "https://explorer.api.openai.com/",
+            "Referer": "https://chat.openai.com/",
+            "Cookie": self.__cookie_string(),
         }
         response = self.session.get(
             url=url,
@@ -167,7 +188,8 @@ class Authenticator:
             "Connection": "keep-alive",
             "User-Agent": self.user_agent,
             "Accept-Language": "en-US,en;q=0.9",
-            "Referer": "https://explorer.api.openai.com/",
+            "Referer": "https://chat.openai.com/",
+            "Cookie": self.__cookie_string(),
         }
         response = self.session.get(url, headers=headers)
         if response.status_code == 200:
@@ -203,6 +225,7 @@ class Authenticator:
             "Referer": f"https://auth0.openai.com/u/login/identifier?state={state}",
             "Accept-Language": "en-US,en;q=0.9",
             "Content-Type": "application/x-www-form-urlencoded",
+            "Cookie": self.__cookie_string(),
         }
         response = self.session.post(
             url,
@@ -238,6 +261,7 @@ class Authenticator:
             "Referer": f"https://auth0.openai.com/u/login/password?state={state}",
             "Accept-Language": "en-US,en;q=0.9",
             "Content-Type": "application/x-www-form-urlencoded",
+            "Cookie": self.__cookie_string(),
         }
         response = self.session.post(
             url,
@@ -245,10 +269,9 @@ class Authenticator:
             allow_redirects=False,
             data=payload,
         )
-        if response.status_code == 302 or response.status_code == 200:
-            new_state = re.findall(r"state=(.*)", response.text)[0]
-            new_state = new_state.split('"')[0]
-            self.__part_six(old_state=state, new_state=new_state)
+        if response.status_code == 302:
+            redirect_url = response.headers.get("location")
+            self.__part_six(old_state=state, redirect_url=redirect_url)
         else:
             error = Error(
                 location="__part_five",
@@ -257,8 +280,8 @@ class Authenticator:
             )
             raise error
 
-    def __part_six(self, old_state: str, new_state) -> None:
-        url = f"https://auth0.openai.com/authorize/resume?state={new_state}"
+    def __part_six(self, old_state: str, redirect_url) -> None:
+        url = "https://auth0.openai.com" + redirect_url
         headers = {
             "Host": "auth0.openai.com",
             "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
@@ -266,14 +289,12 @@ class Authenticator:
             "User-Agent": self.user_agent,
             "Accept-Language": "en-GB,en-US;q=0.9,en;q=0.8",
             "Referer": f"https://auth0.openai.com/u/login/password?state={old_state}",
+            "Cookie": self.__cookie_string(),
         }
-        response = self.session.get(
-            url,
-            headers=headers,
-            allow_redirects=False,
-        )
+        response = self.session.get(url, headers=headers, allow_redirects=False)
         if response.status_code == 302:
             # Print redirect url
+            print(response.headers.get("location"))
             redirect_url = response.headers.get("location")
             self.__part_seven(redirect_url=redirect_url, previous_url=url)
         else:
@@ -285,25 +306,22 @@ class Authenticator:
             raise error
 
     def __part_seven(self, redirect_url: str, previous_url: str) -> None:
-        url = redirect_url
+        url = redirect_url.replace("https://chat.openai.com", "http://127.0.0.1:8080")
         headers = {
-            "Host": "explorer.api.openai.com",
+            "Host": "chat.openai.com",
             "Accept": "application/json",
             "Connection": "keep-alive",
             "User-Agent": self.user_agent,
             "Accept-Language": "en-GB,en-US;q=0.9,en;q=0.8",
             "Referer": previous_url,
+            "Cookie": self.__cookie_string(),
         }
         response = self.session.get(
-            url,
-            headers=headers,
-            allow_redirects=False,
+            url, headers=headers, allow_redirects=False, cookies=self.session.cookies
         )
         if response.status_code == 302:
-            self.session_token = response.cookies.get(
-                "__Secure-next-auth.session-token",
-            )
-            self.get_access_token()
+            print(response.headers.get("location"))
+            # self.get_access_token()
         else:
             error = Error(
                 location="__part_seven",
@@ -321,10 +339,10 @@ class Authenticator:
             self.session_token,
         )
         response = self.session.get(
-            "https://explorer.api.openai.com/api/auth/session",
+            "http://127.0.0.1:8080/api/auth/session",
         )
         if response.status_code == 200:
-            self.access_token = response.json()["accessToken"]
+            self.access_token = response.json().get("accessToken")
             return self.access_token
         else:
             error = Error(
