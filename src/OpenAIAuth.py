@@ -28,10 +28,10 @@ class Authenticator:
     def __init__(
         self,
         email_address: str,
+        puid: str,
         password: str,
         proxy: str = None,
     ):
-        self.session_token = None
         self.email_address = email_address
         self.password = password
         self.proxy = proxy
@@ -43,6 +43,7 @@ class Authenticator:
         self.session.proxies.update(proxies)
         self.access_token: str = None
         self.user_agent = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/109.0.0.0 Safari/537.36"
+        self.session.cookies.set("_puid", puid)
 
     @staticmethod
     def url_encode(string: str) -> str:
@@ -53,29 +54,11 @@ class Authenticator:
         """
         return urllib.parse.quote(string)
 
-    def __cookies(self, domain) -> dict:
-        """
-        Return cookies in a dictionary
-        :return:
-        """
-        cookies = []
-        for cookie in self.session.cookies:
-            # if domain in cookie.domain:
-            cookies.append({"name": cookie.name, "value": cookie.value})
-        return cookies
-
-    def __cookie_string(self, domain) -> str:
-        cookies = self.__cookies(domain)
-        cookie_string = ""
-        for cookie in cookies:
-            cookie_string += f"{cookie['name']}={cookie['value']};"
-        return cookie_string
-
     def begin(self) -> None:
         """
         In part two, We make a request to https://chat.openai.com/api/auth/csrf and grab a fresh csrf token
         """
-        url = "http://127.0.0.1:8080/api/auth/csrf"
+        url = "https://chat.openai.com/api/auth/csrf"
         headers = {
             "Host": "chat.openai.com",
             "Accept": "*/*",
@@ -84,7 +67,6 @@ class Authenticator:
             "Accept-Language": "en-GB,en-US;q=0.9,en;q=0.8",
             "Referer": "https://chat.openai.com/auth/login",
             "Accept-Encoding": "gzip, deflate, br",
-            "Cookie": self.__cookie_string("chat.openai.com"),
         }
         response = self.session.get(
             url=url,
@@ -107,7 +89,7 @@ class Authenticator:
         """
         We reuse the token from part to make a request to /api/auth/signin/auth0?prompt=login
         """
-        url = "http://127.0.0.1:8080/api/auth/signin/auth0?prompt=login"
+        url = "https://chat.openai.com/api/auth/signin/auth0?prompt=login"
         payload = f"callbackUrl=%2F&csrfToken={token}&json=true"
         headers = {
             "Host": "chat.openai.com",
@@ -122,7 +104,7 @@ class Authenticator:
             "Sec-Fetch-Dest": "empty",
             "Referer": "https://chat.openai.com/auth/login",
             "Accept-Encoding": "gzip, deflate",
-            # "Cookie": self.__cookie_string("chat.openai.com"),
+            #
         }
         response = self.session.post(url=url, headers=headers, data=payload)
         if response.status_code == 200 and "json" in response.headers["Content-Type"]:
@@ -159,7 +141,6 @@ class Authenticator:
             "User-Agent": self.user_agent,
             "Accept-Language": "en-US,en;q=0.9",
             "Referer": "https://chat.openai.com/",
-            "Cookie": self.__cookie_string("auth0.openai.com"),
         }
         response = self.session.get(
             url=url,
@@ -190,7 +171,6 @@ class Authenticator:
             "User-Agent": self.user_agent,
             "Accept-Language": "en-US,en;q=0.9",
             "Referer": "https://chat.openai.com/",
-            "Cookie": self.__cookie_string("auth0.openai.com"),
         }
         response = self.session.get(url, headers=headers)
         if response.status_code == 200:
@@ -226,7 +206,6 @@ class Authenticator:
             "Referer": f"https://auth0.openai.com/u/login/identifier?state={state}",
             "Accept-Language": "en-US,en;q=0.9",
             "Content-Type": "application/x-www-form-urlencoded",
-            "Cookie": self.__cookie_string("auth0.openai.com"),
         }
         response = self.session.post(
             url,
@@ -262,7 +241,6 @@ class Authenticator:
             "Referer": f"https://auth0.openai.com/u/login/password?state={state}",
             "Accept-Language": "en-US,en;q=0.9",
             "Content-Type": "application/x-www-form-urlencoded",
-            "Cookie": self.__cookie_string("auth0.openai.com"),
         }
         response = self.session.post(
             url,
@@ -290,12 +268,9 @@ class Authenticator:
             "User-Agent": self.user_agent,
             "Accept-Language": "en-GB,en-US;q=0.9,en;q=0.8",
             "Referer": f"https://auth0.openai.com/u/login/password?state={old_state}",
-            "Cookie": self.__cookie_string("auth0.openai.com"),
         }
         response = self.session.get(url, headers=headers, allow_redirects=False)
         if response.status_code == 302:
-            # Print redirect url
-            print(response.headers.get("location"))
             redirect_url = response.headers.get("location")
             self.__part_seven(redirect_url=redirect_url, previous_url=url)
         else:
@@ -307,7 +282,7 @@ class Authenticator:
             raise error
 
     def __part_seven(self, redirect_url: str, previous_url: str) -> None:
-        url = redirect_url.replace("https://chat.openai.com", "http://127.0.0.1:8080")
+        url = redirect_url
         headers = {
             "Host": "chat.openai.com",
             "Accept": "application/json",
@@ -315,14 +290,12 @@ class Authenticator:
             "User-Agent": self.user_agent,
             "Accept-Language": "en-GB,en-US;q=0.9,en;q=0.8",
             "Referer": previous_url,
-            "Cookie": self.__cookie_string("chat.openai.com"),
         }
         response = self.session.get(
-            url, headers=headers, allow_redirects=False, cookies=self.session.cookies
+            url, headers=headers, allow_redirects=True, cookies=self.session.cookies
         )
-        if response.status_code == 302:
-            print(response.headers.get("location"))
-            # self.get_access_token()
+        if response.status_code == 200:
+            return
         else:
             error = Error(
                 location="__part_seven",
@@ -335,12 +308,8 @@ class Authenticator:
         """
         Gets access token
         """
-        self.session.cookies.set(
-            "__Secure-next-auth.session-token",
-            self.session_token,
-        )
         response = self.session.get(
-            "http://127.0.0.1:8080/api/auth/session",
+            "https://chat.openai.com/api/auth/session",
         )
         if response.status_code == 200:
             self.access_token = response.json().get("accessToken")
