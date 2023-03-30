@@ -60,8 +60,8 @@ class Authenticator:
         """
         cookies = []
         for cookie in self.session.cookies:
-            if domain in cookie.domain:
-                cookies.append({"name": cookie.name, "value": cookie.value})
+            # if domain in cookie.domain:
+            cookies.append({"name": cookie.name, "value": cookie.value})
         return cookies
 
     def __cookie_string(self, domain) -> str:
@@ -122,7 +122,7 @@ class Authenticator:
             "Sec-Fetch-Dest": "empty",
             "Referer": "https://chat.openai.com/auth/login",
             "Accept-Encoding": "gzip, deflate",
-            "Cookie": self.__cookie_string("chat.openai.com"),
+            # "Cookie": self.__cookie_string("chat.openai.com"),
         }
         response = self.session.post(url=url, headers=headers, data=payload)
         if response.status_code == 200 and "json" in response.headers["Content-Type"]:
