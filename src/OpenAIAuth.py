@@ -1,5 +1,6 @@
 # Credits to github.com/rawandahmad698/PyChatGPT
 import re
+import os
 import urllib
 
 import requests
@@ -28,10 +29,13 @@ class Authenticator:
     def __init__(
         self,
         email_address: str,
-        puid: str,
         password: str,
+        puid: str = None,
         proxy: str = None,
     ):
+        puid = puid or os.environ.get("PUID")
+        if not puid:
+            raise ValueError("PUID is required")
         self.email_address = email_address
         self.password = password
         self.proxy = proxy
