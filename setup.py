@@ -3,7 +3,7 @@ from setuptools import setup
 
 setup(
     name="OpenAIAuth",
-    version="0.3.5",
+    version="0.3.6",
     license="MIT",
     author="Rawand Ahmed Shaswar and Antonio Cheong",
     author_email="acheong@student.dalat.org",
@@ -12,9 +12,7 @@ setup(
     package_dir={"": "src"},
     py_modules=["OpenAIAuth"],
     url="https://github.com/acheong08/OpenAIAuth",
-    project_urls={
-        "Bug Report": "https://github.com/acheong08/OpenAIAuth/issues/new"
-    },
+    project_urls={"Bug Report": "https://github.com/acheong08/OpenAIAuth/issues/new"},
     install_requires=[
         "requests",
     ],
