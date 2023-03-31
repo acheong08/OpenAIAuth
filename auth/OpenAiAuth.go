@@ -66,6 +66,7 @@ func (auth *Authenticator) URLEncode(str string) string {
 }
 
 func (auth *Authenticator) Begin() Error {
+	print(".")
 	url := "https://chat.openai.com/api/auth/csrf"
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
@@ -109,6 +110,7 @@ func (auth *Authenticator) Begin() Error {
 	}
 }
 func (auth *Authenticator) partOne(token string) Error {
+	print(".")
 	url := "https://chat.openai.com/api/auth/signin/auth0?prompt=login"
 	payload := fmt.Sprintf("callbackUrl=%%2F&csrfToken=%s&json=true", token)
 	headers := map[string]string{
@@ -169,6 +171,7 @@ func (auth *Authenticator) partOne(token string) Error {
 }
 
 func (auth *Authenticator) partTwo(url string) Error {
+	print(".")
 	headers := map[string]string{
 		"Host":            "auth0.openai.com",
 		"Accept":          "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
@@ -214,6 +217,7 @@ func (auth *Authenticator) partTwo(url string) Error {
 }
 
 func (auth *Authenticator) partThree(state string) Error {
+	print(".")
 	url := fmt.Sprintf("https://auth0.openai.com/u/login/identifier?state=%s", state)
 
 	headers := map[string]string{
@@ -254,6 +258,7 @@ func (auth *Authenticator) partThree(state string) Error {
 
 }
 func (auth *Authenticator) partFour(state string) Error {
+	print(".")
 	url := fmt.Sprintf("https://auth0.openai.com/u/login/identifier?state=%s", state)
 	emailURLEncoded := auth.URLEncode(auth.EmailAddress)
 
@@ -297,6 +302,7 @@ func (auth *Authenticator) partFour(state string) Error {
 
 }
 func (auth *Authenticator) partFive(state string) Error {
+	print(".")
 	url := fmt.Sprintf("https://auth0.openai.com/u/login/password?state=%s", state)
 	emailURLEncoded := auth.URLEncode(auth.EmailAddress)
 	passwordURLEncoded := auth.URLEncode(auth.Password)
@@ -338,6 +344,7 @@ func (auth *Authenticator) partFive(state string) Error {
 
 }
 func (auth *Authenticator) partSix(oldState string, redirectURL string) Error {
+	print(".")
 	url := "https://auth0.openai.com" + redirectURL
 
 	headers := map[string]string{
@@ -374,6 +381,7 @@ func (auth *Authenticator) partSix(oldState string, redirectURL string) Error {
 
 }
 func (auth *Authenticator) partSeven(redirectURL string, previousURL string) Error {
+	print(".")
 	url := redirectURL
 
 	headers := map[string]string{
