@@ -66,7 +66,6 @@ func (auth *Authenticator) URLEncode(str string) string {
 }
 
 func (auth *Authenticator) Begin() Error {
-	print(".")
 	url := "https://chat.openai.com/api/auth/csrf"
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
