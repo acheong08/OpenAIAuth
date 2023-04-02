@@ -66,6 +66,7 @@ func (auth *Authenticator) URLEncode(str string) string {
 }
 
 func (auth *Authenticator) Begin() Error {
+
 	url := "https://chat.openai.com/api/auth/csrf"
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
@@ -104,12 +105,12 @@ func (auth *Authenticator) Begin() Error {
 		csrfToken := csrfTokenResponse.CsrfToken
 		return auth.partOne(csrfToken)
 	} else {
-		err := NewError("begin", resp.StatusCode, string(body), nil)
+		err := NewError("begin", resp.StatusCode, string(body), fmt.Errorf("error: Check details"))
 		return *err
 	}
 }
 func (auth *Authenticator) partOne(token string) Error {
-	print(".")
+
 	url := "https://chat.openai.com/api/auth/signin/auth0?prompt=login"
 	payload := fmt.Sprintf("callbackUrl=%%2F&csrfToken=%s&json=true", token)
 	headers := map[string]string{
@@ -158,19 +159,19 @@ func (auth *Authenticator) partOne(token string) Error {
 
 		url := urlResponse.URL
 		if url == "https://chat.openai.com/api/auth/error?error=OAuthSignin" || strings.Contains(url, "error") {
-			err := NewError("part_one", resp.StatusCode, "You have been rate limited. Please try again later.", nil)
+			err := NewError("part_one", resp.StatusCode, "You have been rate limited. Please try again later.", fmt.Errorf("error: Check details"))
 			return *err
 		}
 
 		return auth.partTwo(url)
 	} else {
-		err := NewError("part_one", resp.StatusCode, string(body), nil)
+		err := NewError("part_one", resp.StatusCode, string(body), fmt.Errorf("error: Check details"))
 		return *err
 	}
 }
 
 func (auth *Authenticator) partTwo(url string) Error {
-	print(".")
+
 	headers := map[string]string{
 		"Host":            "auth0.openai.com",
 		"Accept":          "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
@@ -204,19 +205,19 @@ func (auth *Authenticator) partTwo(url string) Error {
 		stateRegex := regexp.MustCompile(`state=(.*)`)
 		stateMatch := stateRegex.FindStringSubmatch(string(body))
 		if len(stateMatch) < 2 {
-			return *NewError("part_two", 0, "Could not find state in response", nil)
+			return *NewError("part_two", 0, "Could not find state in response", fmt.Errorf("error: Check details"))
 		}
 
 		state := strings.Split(stateMatch[1], `"`)[0]
 		return auth.partThree(state)
 	} else {
-		err := NewError("__part_two", resp.StatusCode, string(body), nil)
+		err := NewError("__part_two", resp.StatusCode, string(body), fmt.Errorf("error: Check details"))
 		return *err
 	}
 }
 
 func (auth *Authenticator) partThree(state string) Error {
-	print(".")
+
 	url := fmt.Sprintf("https://auth0.openai.com/u/login/identifier?state=%s", state)
 
 	headers := map[string]string{
@@ -251,13 +252,13 @@ func (auth *Authenticator) partThree(state string) Error {
 	if resp.StatusCode == 200 {
 		return auth.partFour(state)
 	} else {
-		err := NewError("__part_three", resp.StatusCode, string(body), nil)
+		err := NewError("__part_three", resp.StatusCode, string(body), fmt.Errorf("error: Check details"))
 		return *err
 	}
 
 }
 func (auth *Authenticator) partFour(state string) Error {
-	print(".")
+
 	url := fmt.Sprintf("https://auth0.openai.com/u/login/identifier?state=%s", state)
 	emailURLEncoded := auth.URLEncode(auth.EmailAddress)
 
@@ -295,13 +296,13 @@ func (auth *Authenticator) partFour(state string) Error {
 	if resp.StatusCode == 302 || resp.StatusCode == 200 {
 		return auth.partFive(state)
 	} else {
-		err := NewError("__part_four", resp.StatusCode, "Your email address is invalid.", nil)
+		err := NewError("__part_four", resp.StatusCode, "Your email address is invalid.", fmt.Errorf("error: Check details"))
 		return *err
 	}
 
 }
 func (auth *Authenticator) partFive(state string) Error {
-	print(".")
+
 	url := fmt.Sprintf("https://auth0.openai.com/u/login/password?state=%s", state)
 	emailURLEncoded := auth.URLEncode(auth.EmailAddress)
 	passwordURLEncoded := auth.URLEncode(auth.Password)
@@ -337,13 +338,13 @@ func (auth *Authenticator) partFive(state string) Error {
 		redirectURL := resp.Header.Get("Location")
 		return auth.partSix(state, redirectURL)
 	} else {
-		err := NewError("__part_five", resp.StatusCode, "Your credentials are invalid.", nil)
+		err := NewError("__part_five", resp.StatusCode, "Your credentials are invalid.", fmt.Errorf("error: Check details"))
 		return *err
 	}
 
 }
 func (auth *Authenticator) partSix(oldState string, redirectURL string) Error {
-	print(".")
+
 	url := "https://auth0.openai.com" + redirectURL
 
 	headers := map[string]string{
@@ -374,13 +375,13 @@ func (auth *Authenticator) partSix(oldState string, redirectURL string) Error {
 		redirectURL := resp.Header.Get("Location")
 		return auth.partSeven(redirectURL, url)
 	} else {
-		err := NewError("__part_six", resp.StatusCode, resp.Status, nil)
+		err := NewError("__part_six", resp.StatusCode, resp.Status, fmt.Errorf("error: Check details"))
 		return *err
 	}
 
 }
 func (auth *Authenticator) partSeven(redirectURL string, previousURL string) Error {
-	print(".")
+
 	url := redirectURL
 
 	headers := map[string]string{
@@ -407,14 +408,14 @@ func (auth *Authenticator) partSeven(redirectURL string, previousURL string) Err
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode == 200 {
+	if resp.StatusCode == 200 || resp.StatusCode == 302 {
 		return Error{}
 	} else {
 		body, err := io.ReadAll(resp.Body)
 		if err != nil {
 			return *NewError("part_seven", 0, "", err)
 		}
-		return *NewError("__part_seven", resp.StatusCode, string(body), nil)
+		return *NewError("__part_seven", resp.StatusCode, string(body), fmt.Errorf("error: Check details"))
 	}
 }
 func (auth *Authenticator) GetAccessToken() (string, Error) {
@@ -444,6 +445,6 @@ func (auth *Authenticator) GetAccessToken() (string, Error) {
 		if err != nil {
 			return "", *NewError("get_access_token", 0, "", err)
 		}
-		return "", *NewError("get_access_token", resp.StatusCode, string(body), nil)
+		return "", *NewError("get_access_token", resp.StatusCode, string(body), fmt.Errorf("error: Check details"))
 	}
 }
