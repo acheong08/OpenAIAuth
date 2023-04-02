@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -338,7 +339,12 @@ func (auth *Authenticator) partFive(state string) Error {
 		redirectURL := resp.Header.Get("Location")
 		return auth.partSix(state, redirectURL)
 	} else {
-		err := NewError("__part_five", resp.StatusCode, "Your credentials are invalid.", fmt.Errorf("error: Check details"))
+		body := bytes.NewBuffer(nil)
+		_, err1 := body.ReadFrom(resp.Body)
+		if err1 != nil {
+			return *NewError("part_five", 0, "", err1)
+		}
+		err := NewError("__part_five", resp.StatusCode, body.String(), fmt.Errorf("error: Check details"))
 		return *err
 	}
 

@@ -11,12 +11,18 @@ func main() {
 	auth := auth.NewAuthenticator(os.Getenv("OPENAI_EMAIL"), os.Getenv("OPENAI_PUID"), os.Getenv("OPENAI_PASSWORD"), os.Getenv("PROXY"))
 	err := auth.Begin()
 	if err.Error != nil {
-		fmt.Println(err.Error)
+		println("Error: " + err.Details)
+		println("Location: " + err.Location)
+		println("Status code: " + fmt.Sprint(err.StatusCode))
+		println("Embedded error: " + err.Error.Error())
 		return
 	}
 	token, err := auth.GetAccessToken()
 	if err.Error != nil {
-		fmt.Println(err.Error)
+		println("Error: " + err.Details)
+		println("Location: " + err.Location)
+		println("Status code: " + fmt.Sprint(err.StatusCode))
+		println("Embedded error: " + err.Error.Error())
 		return
 	}
 	fmt.Println(token)
