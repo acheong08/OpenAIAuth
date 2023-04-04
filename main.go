@@ -8,7 +8,7 @@ import (
 )
 
 func main() {
-	auth := auth.NewAuthenticator(os.Getenv("OPENAI_EMAIL"), os.Getenv("OPENAI_PUID"), os.Getenv("OPENAI_PASSWORD"), os.Getenv("PROXY"))
+	auth := auth.NewAuthenticator(os.Getenv("OPENAI_EMAIL"), os.Getenv("OPENAI_PASSWORD"), os.Getenv("OPENAI_PUID"), os.Getenv("PROXY"))
 	err := auth.Begin()
 	if err.Error != nil {
 		println("Error: " + err.Details)

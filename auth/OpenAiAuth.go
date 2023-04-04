@@ -38,7 +38,7 @@ type Authenticator struct {
 	UserAgent    string
 }
 
-func NewAuthenticator(emailAddress, puid, password, proxy string) *Authenticator {
+func NewAuthenticator(emailAddress, password, puid, proxy string) *Authenticator {
 	auth := &Authenticator{
 		EmailAddress: emailAddress,
 		Password:     password,
