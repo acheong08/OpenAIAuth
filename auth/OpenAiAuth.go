@@ -443,6 +443,9 @@ func (auth *Authenticator) GetAccessToken() (string, Error) {
 		if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
 			return "", *NewError("get_access_token", 0, "", err)
 		}
+		if result["accessToken"] == nil {
+			return "", *NewError("get_access_token", 0, "", fmt.Errorf("error: accessToken is nil"))
+		}
 
 		auth.AccessToken = result["accessToken"].(string)
 		return auth.AccessToken, Error{}
