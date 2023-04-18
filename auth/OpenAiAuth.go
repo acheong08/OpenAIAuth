@@ -36,6 +36,8 @@ type Authenticator struct {
 	Session      tls_client.HttpClient
 	AccessToken  string
 	UserAgent    string
+	State        string
+	URL          string
 }
 
 func NewAuthenticator(emailAddress, password, puid, proxy string) *Authenticator {
@@ -68,54 +70,12 @@ func (auth *Authenticator) URLEncode(str string) string {
 
 func (auth *Authenticator) Begin() Error {
 
-	url := "https://chat.openai.com/api/auth/csrf"
-	req, err := http.NewRequest("GET", url, nil)
-	if err != nil {
-		return *NewError("begin", 0, "", err)
-	}
-
-	req.Header.Set("Host", "chat.openai.com")
-	req.Header.Set("Accept", "*/*")
-	req.Header.Set("Connection", "keep-alive")
-	req.Header.Set("User-Agent", auth.UserAgent)
-	req.Header.Set("Accept-Language", "en-GB,en-US;q=0.9,en;q=0.8")
-	req.Header.Set("Referer", "https://chat.openai.com/auth/login")
-	req.Header.Set("Accept-Encoding", "gzip, deflate, br")
-
-	resp, err := auth.Session.Do(req)
-	if err != nil {
-		return *NewError("begin", 0, "", err)
-	}
-	defer resp.Body.Close()
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return *NewError("begin", 0, "", err)
-	}
-
-	if resp.StatusCode == 200 && strings.Contains(resp.Header.Get("Content-Type"), "json") {
-
-		var csrfTokenResponse struct {
-			CsrfToken string `json:"csrfToken"`
-		}
-		err = json.Unmarshal(body, &csrfTokenResponse)
-		if err != nil {
-			return *NewError("begin", 0, "", err)
-		}
-
-		csrfToken := csrfTokenResponse.CsrfToken
-		return auth.partOne(csrfToken)
-	} else {
-		err := NewError("begin", resp.StatusCode, string(body), fmt.Errorf("error: Check details"))
-		return *err
-	}
+	return auth.partOne()
 }
-func (auth *Authenticator) partOne(token string) Error {
+func (auth *Authenticator) partOne() Error {
 
-	url := "https://chat.openai.com/api/auth/signin/auth0?prompt=login"
-	payload := fmt.Sprintf("callbackUrl=%%2F&csrfToken=%s&json=true", token)
+	url := "https://ai.fakeopen.com/auth/endpoint"
 	headers := map[string]string{
-		"Host":            "chat.openai.com",
 		"User-Agent":      auth.UserAgent,
 		"Content-Type":    "application/x-www-form-urlencoded",
 		"Accept":          "*/*",
@@ -129,7 +89,7 @@ func (auth *Authenticator) partOne(token string) Error {
 		"Accept-Encoding": "gzip, deflate",
 	}
 
-	req, err := http.NewRequest("POST", url, strings.NewReader(payload))
+	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		return *NewError("part_one", 0, "", err)
 	}
@@ -151,12 +111,15 @@ func (auth *Authenticator) partOne(token string) Error {
 	if resp.StatusCode == 200 && strings.Contains(resp.Header.Get("Content-Type"), "json") {
 
 		var urlResponse struct {
-			URL string `json:"url"`
+			URL   string `json:"url"`
+			State string `json:"state"`
 		}
 		err = json.Unmarshal(body, &urlResponse)
 		if err != nil {
 			return *NewError("part_one", 0, "", err)
 		}
+
+		auth.State = urlResponse.State
 
 		url := urlResponse.URL
 		if url == "https://chat.openai.com/api/auth/error?error=OAuthSignin" || strings.Contains(url, "error") {
@@ -378,59 +341,27 @@ func (auth *Authenticator) partSix(oldState string, redirectURL string) Error {
 	defer resp.Body.Close()
 
 	if resp.StatusCode == 302 {
-		redirectURL := resp.Header.Get("Location")
-		return auth.partSeven(redirectURL, url)
+		auth.URL = resp.Header.Get("Location")
+		return Error{}
 	} else {
 		err := NewError("__part_six", resp.StatusCode, resp.Status, fmt.Errorf("error: Check details"))
 		return *err
 	}
 
 }
-func (auth *Authenticator) partSeven(redirectURL string, previousURL string) Error {
-
-	url := redirectURL
-
-	headers := map[string]string{
-		"Host":            "chat.openai.com",
-		"Accept":          "application/json",
-		"Connection":      "keep-alive",
-		"User-Agent":      auth.UserAgent,
-		"Accept-Language": "en-GB,en-US;q=0.9,en;q=0.8",
-		"Referer":         previousURL,
-	}
-
-	req, err := http.NewRequest("GET", url, nil)
-	if err != nil {
-		return *NewError("part_seven", 0, "", err)
-	}
-
-	for k, v := range headers {
-		req.Header.Set(k, v)
-	}
-
-	resp, err := auth.Session.Do(req)
-	if err != nil {
-		return *NewError("part_seven", 0, "", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode == 200 || resp.StatusCode == 302 {
-		return Error{}
-	} else {
-		body, err := io.ReadAll(resp.Body)
-		if err != nil {
-			return *NewError("part_seven", 0, "", err)
-		}
-		return *NewError("__part_seven", resp.StatusCode, string(body), fmt.Errorf("error: Check details"))
-	}
-}
 func (auth *Authenticator) GetAccessToken() (string, Error) {
-	url := "https://chat.openai.com/api/auth/session"
+	url := "https://ai.fakeopen.com/auth/token"
 
-	req, err := http.NewRequest("GET", url, nil)
+	payload := fmt.Sprintf("state=%s&callbackUrl=%s", auth.State, auth.URLEncode(auth.URL))
+
+	println(payload)
+
+	req, err := http.NewRequest("POST", url, strings.NewReader(payload))
 	if err != nil {
 		return "", *NewError("get_access_token", 0, "", err)
 	}
+
+	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
 
 	resp, err := auth.Session.Do(req)
 	if err != nil {
