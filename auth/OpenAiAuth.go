@@ -40,7 +40,7 @@ type Authenticator struct {
 	URL          string
 }
 
-func NewAuthenticator(emailAddress, password, puid, proxy string) *Authenticator {
+func NewAuthenticator(emailAddress, password, proxy string) *Authenticator {
 	auth := &Authenticator{
 		EmailAddress: emailAddress,
 		Password:     password,
@@ -48,10 +48,6 @@ func NewAuthenticator(emailAddress, password, puid, proxy string) *Authenticator
 		UserAgent:    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/109.0.0.0 Safari/537.36",
 	}
 	jar := tls_client.NewCookieJar()
-	jar.SetCookies(
-		&url.URL{Scheme: "https", Host: "chat.openai.com"},
-		[]*http.Cookie{{Name: "_puid", Value: puid}},
-	)
 	options := []tls_client.HttpClientOption{
 		tls_client.WithTimeoutSeconds(20),
 		tls_client.WithClientProfile(tls_client.Chrome_110),
