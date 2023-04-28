@@ -352,7 +352,6 @@ func (auth *Authenticator) partFive(state string) Error {
 func (auth *Authenticator) partSix(oldState string, redirectURL string) Error {
 
 	url := "https://auth0.openai.com" + redirectURL
-	println(url)
 
 	headers := map[string]string{
 		"Host":            "auth0.openai.com",
