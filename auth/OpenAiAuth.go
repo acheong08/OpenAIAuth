@@ -379,7 +379,6 @@ func (auth *Authenticator) partSix(oldState string, redirectURL string) Error {
 
 	if resp.StatusCode == 302 {
 		auth.URL = resp.Header.Get("Location")
-		println(auth.URL)
 		return Error{}
 	} else {
 		err := NewError("__part_six", resp.StatusCode, resp.Status, fmt.Errorf("error: Check details"))
@@ -388,5 +387,9 @@ func (auth *Authenticator) partSix(oldState string, redirectURL string) Error {
 
 }
 func (auth *Authenticator) GetAccessToken() (string, Error) {
+	// Print all cookies
+	for _, cookie := range auth.Session.GetCookies(&url.URL{Host: "openai.com"}) {
+		fmt.Printf("  %s: %s\n", cookie.Name, cookie.Value)
+	}
 	return auth.URL, Error{}
 }
