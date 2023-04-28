@@ -3,6 +3,7 @@ package auth
 import (
 	"bytes"
 	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/url"
@@ -387,6 +388,45 @@ func (auth *Authenticator) partSix(oldState string, redirectURL string) Error {
 
 }
 func (auth *Authenticator) GetAccessToken() (string, Error) {
-	println(auth.URL)
+	auth.URL = strings.Replace(auth.URL, "chat.openai.com/api/", "labs.openai.com/", 1)
+	resp, _ := auth.Session.Get(auth.URL)
+	defer resp.Body.Close()
+	if resp.StatusCode != 200 {
+		return "", *NewError("get_access_token", resp.StatusCode, resp.Status, fmt.Errorf("error: Check details"))
+	}
+	// Get code=*& from URL
+	re := regexp.MustCompile(`code=(.*?)&`)
+	matches := re.FindStringSubmatch(resp.Request.URL.String())
+	if len(matches) != 2 {
+		return "", *NewError("get_access_token", 0, "Missing code", fmt.Errorf("error: Check details"))
+	}
+	auth_code := matches[1]
+	// Construct payload
+	payload := map[string]interface{}{
+		"client_id":     auth.AuthDetails.ClientID,
+		"code":          auth_code,
+		"code_verifier": auth.Verifier_code,
+		"grant_type":    "authorization_code",
+		"redirect_uri":  "https://labs.openai.com/auth/callback",
+	}
+	payload_json, _ := json.Marshal(payload)
+	// Construct request to https://auth0.openai.com/oauth/token
+	req, _ := http.NewRequest("POST", "https://auth0.openai.com/oauth/token", strings.NewReader(string(payload_json)))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("User-Agent", auth.UserAgent)
+	req.Header.Set("Accept", "application/json")
+
+	resp, _ = auth.Session.Do(req)
+	defer resp.Body.Close()
+
+	body, _ := io.ReadAll(resp.Body)
+
+	if resp.StatusCode != 200 {
+		return "", *NewError("get_access_token", resp.StatusCode, string(body), fmt.Errorf("error: Check details"))
+	}
+
+	println(body)
+
 	return "", Error{}
+
 }
