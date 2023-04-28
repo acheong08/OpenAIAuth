@@ -17,13 +17,13 @@ func main() {
 		println("Embedded error: " + err.Error.Error())
 		return
 	}
-	// token, err := auth.GetAccessToken()
-	// if err.Error != nil {
-	// 	println("Error: " + err.Details)
-	// 	println("Location: " + err.Location)
-	// 	println("Status code: " + fmt.Sprint(err.StatusCode))
-	// 	println("Embedded error: " + err.Error.Error())
-	// 	return
-	// }
-	// fmt.Println(token)
+	token, err := auth.GetAccessToken()
+	if err.Error != nil {
+		println("Error: " + err.Details)
+		println("Location: " + err.Location)
+		println("Status code: " + fmt.Sprint(err.StatusCode))
+		println("Embedded error: " + err.Error.Error())
+		return
+	}
+	fmt.Println(token)
 }
