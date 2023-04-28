@@ -93,7 +93,29 @@ func (auth *Authenticator) Begin() Error {
 			return *NewError("begin", 0, "Script tag not found", fmt.Errorf("error: Check details"))
 		}
 		scriptURL := matches[0]
-		println(scriptURL)
+		resp, err := auth.Session.Get(scriptURL)
+		if err != nil {
+			return *NewError("begin", 0, "Network issue", err)
+		}
+		defer resp.Body.Close()
+		body, err := io.ReadAll(resp.Body)
+		if err != nil {
+			return *NewError("begin", 0, "Body can't be read", err)
+		}
+		if resp.StatusCode == 200 {
+			// Look for REACT_APP_OPENAI_AUTH0_CLIENT_ID:"DMg91f5PCHQtc7u018WKiL0zopKdiHle"
+			// (the client ID is the string between the quotes)
+			re := regexp.MustCompile(`REACT_APP_OPENAI_AUTH0_CLIENT_ID:"([a-zA-Z0-9]+)"`)
+			matches := re.FindStringSubmatch(string(body))
+			if len(matches) != 2 {
+				println(string(body))
+				return *NewError("begin", 0, "Client ID not found", fmt.Errorf("error: Check details"))
+			}
+			clientID := matches[1]
+			println("Client ID:", clientID)
+		} else {
+			return *NewError("begin", resp.StatusCode, string(body), fmt.Errorf("error: Check details"))
+		}
 
 	} else {
 		return *NewError("begin", resp.StatusCode, string(body), fmt.Errorf("error: Check details"))
