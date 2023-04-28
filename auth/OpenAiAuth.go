@@ -117,7 +117,7 @@ func (auth *Authenticator) Begin() Error {
 }
 func (auth *Authenticator) partOne() Error {
 
-	url := "https://ai.fakeopen.com/auth/endpoint"
+	auth_url := "https://auth0.openai.com/authorize"
 	headers := map[string]string{
 		"User-Agent":      auth.UserAgent,
 		"Content-Type":    "application/x-www-form-urlencoded",
@@ -131,8 +131,21 @@ func (auth *Authenticator) partOne() Error {
 		"Referer":         "https://chat.openai.com/auth/login",
 		"Accept-Encoding": "gzip, deflate",
 	}
-
-	req, err := http.NewRequest("GET", url, nil)
+	// Construct payload
+	// URL encoded form - client_id=TdJIcbe16WoTHtN95nyywh5E4yOo6ItG&scope=openid email profile offline_access model.request model.read organization.read&response_type=code&redirect_uri=https%3A%2F%2Fchat.openai.com%2Fapi%2Fauth%2Fcallback%2Fauth0&audience=https%3A%2F%2Fapi.openai.com%2Fv1&prompt=login&state=iUxZBeFvcCUrVITrlwKwkBuW3CZ9qn_C3mR5ZZeSDvQ&code_challenge=SNBtqj_N1ssVSAAaE12hrOAR2bU5GHMMQNJYpkUg5fE&code_challenge_method=S256
+	payload := url.Values{
+		"client_id":             {auth.AuthDetails.ClientID},
+		"scope":                 {auth.AuthDetails.Scope},
+		"response_type":         {auth.AuthDetails.ResponseType},
+		"redirect_uri":          {auth.AuthDetails.RedirectURL},
+		"audience":              {auth.AuthDetails.Audience},
+		"prompt":                {auth.AuthDetails.Prompt},
+		"state":                 {auth.AuthDetails.State},
+		"code_challenge":        {auth.AuthDetails.CodeChallenge},
+		"code_challenge_method": {auth.AuthDetails.CodeChallengeMethod},
+	}
+	auth_url = auth_url + "?" + payload.Encode()
+	req, err := http.NewRequest("GET", auth_url, nil)
 	if err != nil {
 		return *NewError("part_one", 0, "", err)
 	}
@@ -151,26 +164,8 @@ func (auth *Authenticator) partOne() Error {
 		return *NewError("part_one", 0, "", err)
 	}
 
-	if resp.StatusCode == 200 && strings.Contains(resp.Header.Get("Content-Type"), "json") {
-
-		var urlResponse struct {
-			URL   string `json:"url"`
-			State string `json:"state"`
-		}
-		err = json.Unmarshal(body, &urlResponse)
-		if err != nil {
-			return *NewError("part_one", 0, "", err)
-		}
-
-		auth.State = urlResponse.State
-
-		url := urlResponse.URL
-		if url == "https://chat.openai.com/api/auth/error?error=OAuthSignin" || strings.Contains(url, "error") {
-			err := NewError("part_one", resp.StatusCode, "You have been rate limited. Please try again later.", fmt.Errorf("error: Check details"))
-			return *err
-		}
-
-		return auth.partTwo(url)
+	if resp.StatusCode == 302 {
+		return auth.partTwo("https://auth0.openai.com" + resp.Header.Get("Location"))
 	} else {
 		err := NewError("part_one", resp.StatusCode, string(body), fmt.Errorf("error: Check details"))
 		return *err
