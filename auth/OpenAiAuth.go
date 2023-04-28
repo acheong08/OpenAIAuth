@@ -3,7 +3,6 @@ package auth
 import (
 	"bytes"
 	"encoding/base64"
-	"encoding/json"
 	"fmt"
 	"io"
 	"net/url"
@@ -353,6 +352,7 @@ func (auth *Authenticator) partFive(state string) Error {
 func (auth *Authenticator) partSix(oldState string, redirectURL string) Error {
 
 	url := "https://auth0.openai.com" + redirectURL
+	println(url)
 
 	headers := map[string]string{
 		"Host":            "auth0.openai.com",
@@ -388,41 +388,6 @@ func (auth *Authenticator) partSix(oldState string, redirectURL string) Error {
 
 }
 func (auth *Authenticator) GetAccessToken() (string, Error) {
-	url := "https://ai.fakeopen.com/auth/token"
-
-	payload := fmt.Sprintf("state=%s&callbackUrl=%s", auth.State, auth.URLEncode(auth.URL))
-
-	println(payload)
-
-	req, err := http.NewRequest("POST", url, strings.NewReader(payload))
-	if err != nil {
-		return "", *NewError("get_access_token", 0, "", err)
-	}
-
-	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
-
-	resp, err := auth.Session.Do(req)
-	if err != nil {
-		return "", *NewError("get_access_token", 0, "", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode == 200 {
-		var result map[string]interface{}
-		if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
-			return "", *NewError("get_access_token", 0, "", err)
-		}
-		if result["accessToken"] == nil {
-			return "", *NewError("get_access_token", 0, "", fmt.Errorf("error: accessToken is nil"))
-		}
-
-		auth.AccessToken = result["accessToken"].(string)
-		return auth.AccessToken, Error{}
-	} else {
-		body, err := io.ReadAll(resp.Body)
-		if err != nil {
-			return "", *NewError("get_access_token", 0, "", err)
-		}
-		return "", *NewError("get_access_token", resp.StatusCode, string(body), fmt.Errorf("error: Check details"))
-	}
+	println(auth.URL)
+	return "", Error{}
 }
