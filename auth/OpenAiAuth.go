@@ -410,11 +410,13 @@ func (auth *Authenticator) GetAccessToken() (string, Error) {
 		"redirect_uri":  "https://labs.openai.com/auth/callback",
 	}
 	payload_json, _ := json.Marshal(payload)
+	println(string(payload_json))
 	// Construct request to https://auth0.openai.com/oauth/token
 	req, _ := http.NewRequest("POST", "https://auth0.openai.com/oauth/token", strings.NewReader(string(payload_json)))
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("User-Agent", auth.UserAgent)
 	req.Header.Set("Accept", "application/json")
+	req.Header.Set("auth0-client", "eyJuYW1lIjoiYXV0aDAtc3BhLWpzIiwidmVyc2lvbiI6IjEuMjAuMSJ9")
 
 	resp, _ = auth.Session.Do(req)
 	defer resp.Body.Close()
