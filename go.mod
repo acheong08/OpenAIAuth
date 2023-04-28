@@ -5,6 +5,7 @@ go 1.20
 require (
 	github.com/bogdanfinn/fhttp v0.5.19
 	github.com/bogdanfinn/tls-client v1.3.8
+	github.com/nirasan/go-oauth-pkce-code-verifier v0.0.0-20220510032225-4f9f17eaec4c
 )
 
 require (

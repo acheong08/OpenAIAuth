@@ -11,6 +11,7 @@ import (
 
 	http "github.com/bogdanfinn/fhttp"
 	tls_client "github.com/bogdanfinn/tls-client"
+	pkce "github.com/nirasan/go-oauth-pkce-code-verifier"
 )
 
 type Error struct {
@@ -30,14 +31,17 @@ func NewError(location string, statusCode int, details string, err error) *Error
 }
 
 type Authenticator struct {
-	EmailAddress string
-	Password     string
-	Proxy        string
-	Session      tls_client.HttpClient
-	AccessToken  string
-	UserAgent    string
-	State        string
-	URL          string
+	EmailAddress       string
+	Password           string
+	Proxy              string
+	Session            tls_client.HttpClient
+	AccessToken        string
+	UserAgent          string
+	State              string
+	URL                string
+	Verifier_code      string
+	Verifier           *pkce.CodeVerifier
+	Verifier_challenge string
 }
 
 func NewAuthenticator(emailAddress, password, proxy string) *Authenticator {
@@ -57,6 +61,12 @@ func NewAuthenticator(emailAddress, password, proxy string) *Authenticator {
 		tls_client.WithProxyUrl(proxy),
 	}
 	auth.Session, _ = tls_client.NewHttpClient(tls_client.NewNoopLogger(), options...)
+
+	// PKCE
+	auth.Verifier, _ = pkce.CreateCodeVerifier()
+	auth.Verifier_code = auth.Verifier.String()
+	auth.Verifier_challenge = auth.Verifier.CodeChallengeS256()
+
 	return auth
 }
 
@@ -65,7 +75,7 @@ func (auth *Authenticator) URLEncode(str string) string {
 }
 
 func (auth *Authenticator) Begin() Error {
-	resp, err := http.Get("https://labs.openai.com/")
+	resp, err := auth.Session.Get("https://labs.openai.com")
 	if err != nil {
 		return *NewError("begin", 0, "Network issue", err)
 	}
@@ -75,16 +85,18 @@ func (auth *Authenticator) Begin() Error {
 		return *NewError("begin", 0, "Body can't be read", err)
 	}
 	if resp.StatusCode == 200 {
-		// Look for <script> tag and extract the src
-		// <script * src="*"
-		re := regexp.MustCompile(`<script.*src="(.*)"`)
+		// Look for https://openailabs-site.azureedge.net/public-assets/d/67511d1e5e/static/js/main.9098f3f8.js
+		re := regexp.MustCompile(`https://openailabs-site.azureedge.net/public-assets/d/[a-z0-9]+/static/js/main.[a-z0-9]+.js`)
 		matches := re.FindStringSubmatch(string(body))
 		if len(matches) != 1 {
+			println(string(body))
 			return *NewError("begin", 0, "Script tag not found", fmt.Errorf("error: Check details"))
 		}
 		scriptURL := matches[0]
 		println(scriptURL)
 
+	} else {
+		return *NewError("begin", resp.StatusCode, string(body), fmt.Errorf("error: Check details"))
 	}
 
 	return auth.partOne()
