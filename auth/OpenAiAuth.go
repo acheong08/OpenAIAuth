@@ -65,6 +65,27 @@ func (auth *Authenticator) URLEncode(str string) string {
 }
 
 func (auth *Authenticator) Begin() Error {
+	resp, err := http.Get("https://labs.openai.com/")
+	if err != nil {
+		return *NewError("begin", 0, "Network issue", err)
+	}
+	defer resp.Body.Close()
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return *NewError("begin", 0, "Body can't be read", err)
+	}
+	if resp.StatusCode == 200 {
+		// Look for <script> tag and extract the src
+		// <script * src="*"
+		re := regexp.MustCompile(`<script.*src="(.*)"`)
+		matches := re.FindStringSubmatch(string(body))
+		if len(matches) != 1 {
+			return *NewError("begin", 0, "Script tag not found", fmt.Errorf("error: Check details"))
+		}
+		scriptURL := matches[0]
+		println(scriptURL)
+
+	}
 
 	return auth.partOne()
 }
