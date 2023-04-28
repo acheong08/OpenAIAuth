@@ -380,6 +380,7 @@ func (auth *Authenticator) partSix(oldState string, redirectURL string) Error {
 
 	if resp.StatusCode == 302 {
 		auth.URL = resp.Header.Get("Location")
+		println(auth.URL)
 		return Error{}
 	} else {
 		err := NewError("__part_six", resp.StatusCode, resp.Status, fmt.Errorf("error: Check details"))
@@ -388,7 +389,7 @@ func (auth *Authenticator) partSix(oldState string, redirectURL string) Error {
 
 }
 func (auth *Authenticator) GetAccessToken() (string, Error) {
-	auth.URL = strings.Replace(auth.URL, "chat.openai.com/api/", "labs.openai.com/", 1)
+	auth.URL = strings.Replace(auth.URL, "chat.openai.com/api/", "openai.openai.auth0app.com/", 1)
 	resp, _ := auth.Session.Get(auth.URL)
 	defer resp.Body.Close()
 	if resp.StatusCode != 200 {
