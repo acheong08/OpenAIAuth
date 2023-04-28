@@ -2,12 +2,15 @@ package auth
 
 import (
 	"bytes"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/url"
 	"regexp"
 	"strings"
+
+	"crypto/rand"
 
 	http "github.com/bogdanfinn/fhttp"
 	tls_client "github.com/bogdanfinn/tls-client"
@@ -42,6 +45,37 @@ type Authenticator struct {
 	Verifier_code      string
 	Verifier           *pkce.CodeVerifier
 	Verifier_challenge string
+	AuthDetails        AuthDetails
+}
+
+type AuthDetails struct {
+	ClientID            string `json:"client_id"`
+	Scope               string `json:"scope"`
+	ResponseType        string `json:"response_type"`
+	RedirectURL         string `json:"redirect_url"`
+	Audience            string `json:"audience"`
+	Prompt              string `json:"prompt"`
+	State               string `json:"state"`
+	CodeChallenge       string `json:"code_challenge"`
+	CodeChallengeMethod string `json:"code_challenge_method"`
+}
+
+func NewAuthDetails(challenge string) AuthDetails {
+	// Generate state (secrets.token_urlsafe(32))
+	b := make([]byte, 32)
+	rand.Read(b)
+	state := base64.URLEncoding.EncodeToString(b)
+	return AuthDetails{
+		ClientID:            "TdJIcbe16WoTHtN95nyywh5E4yOo6ItG",
+		Scope:               "openid email profile offline_access model.request model.read organization.read",
+		ResponseType:        "code",
+		RedirectURL:         "https://chat.openai.com/api/auth/callback/auth0",
+		Audience:            "https://api.openai.com/v1",
+		Prompt:              "login",
+		State:               state,
+		CodeChallenge:       challenge,
+		CodeChallengeMethod: "S256",
+	}
 }
 
 func NewAuthenticator(emailAddress, password, proxy string) *Authenticator {
@@ -67,6 +101,8 @@ func NewAuthenticator(emailAddress, password, proxy string) *Authenticator {
 	auth.Verifier_code = auth.Verifier.String()
 	auth.Verifier_challenge = auth.Verifier.CodeChallengeS256()
 
+	auth.AuthDetails = NewAuthDetails(auth.Verifier_challenge)
+
 	return auth
 }
 
@@ -75,51 +111,7 @@ func (auth *Authenticator) URLEncode(str string) string {
 }
 
 func (auth *Authenticator) Begin() Error {
-	resp, err := auth.Session.Get("https://labs.openai.com")
-	if err != nil {
-		return *NewError("begin", 0, "Network issue", err)
-	}
-	defer resp.Body.Close()
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return *NewError("begin", 0, "Body can't be read", err)
-	}
-	if resp.StatusCode == 200 {
-		// Look for https://openailabs-site.azureedge.net/public-assets/d/67511d1e5e/static/js/main.9098f3f8.js
-		re := regexp.MustCompile(`https://openailabs-site.azureedge.net/public-assets/d/[a-z0-9]+/static/js/main.[a-z0-9]+.js`)
-		matches := re.FindStringSubmatch(string(body))
-		if len(matches) != 1 {
-			println(string(body))
-			return *NewError("begin", 0, "Script tag not found", fmt.Errorf("error: Check details"))
-		}
-		scriptURL := matches[0]
-		resp, err := auth.Session.Get(scriptURL)
-		if err != nil {
-			return *NewError("begin", 0, "Network issue", err)
-		}
-		defer resp.Body.Close()
-		body, err := io.ReadAll(resp.Body)
-		if err != nil {
-			return *NewError("begin", 0, "Body can't be read", err)
-		}
-		if resp.StatusCode == 200 {
-			// Look for REACT_APP_OPENAI_AUTH0_CLIENT_ID:"DMg91f5PCHQtc7u018WKiL0zopKdiHle"
-			// (the client ID is the string between the quotes)
-			re := regexp.MustCompile(`REACT_APP_OPENAI_AUTH0_CLIENT_ID:"([a-zA-Z0-9]+)"`)
-			matches := re.FindStringSubmatch(string(body))
-			if len(matches) != 2 {
-				println(string(body))
-				return *NewError("begin", 0, "Client ID not found", fmt.Errorf("error: Check details"))
-			}
-			clientID := matches[1]
-			println("Client ID:", clientID)
-		} else {
-			return *NewError("begin", resp.StatusCode, string(body), fmt.Errorf("error: Check details"))
-		}
-
-	} else {
-		return *NewError("begin", resp.StatusCode, string(body), fmt.Errorf("error: Check details"))
-	}
+	// Just realized that the client id is hardcoded in the JS file
 
 	return auth.partOne()
 }
