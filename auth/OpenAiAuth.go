@@ -358,7 +358,7 @@ func (auth *Authenticator) GetAccessToken() (string, Error) {
 	req, _ := http.NewRequest("POST", "https://auth0.openai.com/oauth/token", strings.NewReader(string(payload)))
 	for k, v := range map[string]string{
 		"User-Agent":   auth.UserAgent,
-		"context-type": "application/json",
+		"content-type": "application/json",
 	} {
 		req.Header.Set(k, v)
 	}
