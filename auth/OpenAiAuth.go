@@ -378,5 +378,10 @@ func (auth *Authenticator) GetAccessToken() (string, Error) {
 		return "", *NewError("get_access_token", 0, "", err)
 	}
 
+	// Check if access token in data
+	if _, ok := data["access_token"]; !ok {
+		return "", *NewError("get_access_token", 0, "Missing access token", fmt.Errorf("error: Check details"))
+	}
+
 	return data["access_token"].(string), Error{}
 }
