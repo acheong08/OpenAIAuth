@@ -252,14 +252,14 @@ func (auth *Authenticator) partThree(state string) Error {
 	defer resp.Body.Close()
 
 	if resp.StatusCode == 302 || resp.StatusCode == 200 {
-		return auth.partFive(state)
+		return auth.partFour(state)
 	} else {
 		err := NewError("__part_four", resp.StatusCode, "Your email address is invalid.", fmt.Errorf("error: Check details"))
 		return *err
 	}
 
 }
-func (auth *Authenticator) partFive(state string) Error {
+func (auth *Authenticator) partFour(state string) Error {
 
 	url := fmt.Sprintf("https://auth0.openai.com/u/login/password?state=%s", state)
 	emailURLEncoded := auth.URLEncode(auth.EmailAddress)
@@ -294,7 +294,7 @@ func (auth *Authenticator) partFive(state string) Error {
 
 	if resp.StatusCode == 302 {
 		redirectURL := resp.Header.Get("Location")
-		return auth.partSix(state, redirectURL)
+		return auth.partFive(state, redirectURL)
 	} else {
 		body := bytes.NewBuffer(nil)
 		_, err1 := body.ReadFrom(resp.Body)
@@ -306,7 +306,7 @@ func (auth *Authenticator) partFive(state string) Error {
 	}
 
 }
-func (auth *Authenticator) partSix(oldState string, redirectURL string) Error {
+func (auth *Authenticator) partFive(oldState string, redirectURL string) Error {
 
 	url := "https://auth0.openai.com" + redirectURL
 
