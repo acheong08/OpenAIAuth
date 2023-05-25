@@ -369,7 +369,14 @@ func (auth *Authenticator) GetAccessToken() (string, Error) {
 	defer resp.Body.Close()
 	// Parse response
 	body, _ := io.ReadAll(resp.Body)
-	fmt.Println(string(body))
+	// Parse as JSON
+	var data map[string]interface{}
 
-	return "", Error{}
+	err = json.Unmarshal(body, &data)
+
+	if err != nil {
+		return "", *NewError("get_access_token", 0, "", err)
+	}
+
+	return data["access_token"].(string), Error{}
 }
