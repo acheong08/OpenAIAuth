@@ -14,6 +14,7 @@ import (
 
 	http "github.com/bogdanfinn/fhttp"
 	tls_client "github.com/bogdanfinn/tls-client"
+	pkce "github.com/nirasan/go-oauth-pkce-code-verifier"
 )
 
 type Error struct {
@@ -95,9 +96,9 @@ func NewAuthenticator(emailAddress, password, proxy string) *Authenticator {
 	auth.Session, _ = tls_client.NewHttpClient(tls_client.NewNoopLogger(), options...)
 
 	// PKCE
-	// verifier, _ := pkce.CreateCodeVerifier()
-	auth.Verifier_code = "yGrXROHx_VazA0uovsxKfE263LMFcrSrdm4SlC-rob8"
-	auth.Verifier_challenge = "w6n3Ix420Xhhu-Q5-mOOEyuPZmAsJHUbBpO8Ub7xBCY"
+	verifier, _ := pkce.CreateCodeVerifier()
+	auth.Verifier_code = verifier.String()
+	auth.Verifier_challenge = verifier.CodeChallengeS256()
 
 	auth.AuthDetails = NewAuthDetails(auth.Verifier_challenge)
 
