@@ -87,7 +87,7 @@ func NewAuthenticator(emailAddress, password, proxy string) *Authenticator {
 	jar := tls_client.NewCookieJar()
 	options := []tls_client.HttpClientOption{
 		tls_client.WithTimeoutSeconds(20),
-		tls_client.WithClientProfile(tls_client.Chrome_110),
+		tls_client.WithClientProfile(tls_client.Firefox_102),
 		tls_client.WithNotFollowRedirects(),
 		tls_client.WithCookieJar(jar), // create cookieJar instance and pass it as argument
 		// Proxy
@@ -345,13 +345,16 @@ func (auth *Authenticator) partSix(oldState string, redirectURL string) Error {
 
 }
 func (auth *Authenticator) GetAccessToken() (string, Error) {
-	// Parse auth.URL (Get code=7QEpWz_4irkvJSP29Pyx0-EguHDFhQd_L1rhaxdBbl3gT) using regex
-	code := regexp.MustCompile(`code=(.*)&`).FindStringSubmatch(auth.URL)[1]
+	code := regexp.MustCompile(`code=(.*)&`).FindStringSubmatch(auth.URL)
+	if len(code) == 0 {
+		err := NewError("__get_access_token", 0, auth.URL, fmt.Errorf("error: Check details"))
+		return "", *err
+	}
 	payload, _ := json.Marshal(map[string]string{
 		"redirect_uri":  "com.openai.chat://auth0.openai.com/ios/com.openai.chat/callback",
 		"grant_type":    "authorization_code",
 		"client_id":     "pdlLIX2Y72MIl2rhLhTE9VV9bN905kBh",
-		"code":          code,
+		"code":          code[1],
 		"code_verifier": auth.Verifier_code,
 		"state":         auth.State,
 	})
