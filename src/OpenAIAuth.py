@@ -20,6 +20,16 @@ class Auth0:
         use_cache: bool = True,
         mfa: str = None,
     ):
+        """
+        Initializes an instance of the Auth0 class.
+
+        Args:
+        - email (str): The email address of the user.
+        - password (str): The password of the user.
+        - proxy (str, optional): The proxy server to use for requests. Defaults to None.
+        - use_cache (bool, optional): Flag indicating whether to use cache for access token. Defaults to True.
+        - mfa (str, optional): The multi-factor authentication method. Defaults to None.
+        """
         self.session_token = None
         self.email = email
         self.password = password
@@ -49,6 +59,13 @@ class Auth0:
         return re.fullmatch(regex, email)
 
     def auth(self) -> str:
+        """
+        Authenticates the user and returns the access token.
+
+        Returns:
+        - str: The access token.
+        """
+
         if (
             self.use_cache
             and self.access_token
