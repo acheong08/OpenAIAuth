@@ -3,10 +3,10 @@ from setuptools import setup
 
 setup(
     name="OpenAIAuth",
-    version="1.0.0",
+    version="1.0.1",
     license="MIT",
     author="pengzhile",
-    author_email="<Unknown>",
+    author_email="acheong@student.dalat.org",
     description="OpenAI Authentication Reverse Engineered",
     packages=find_packages("src"),
     package_dir={"": "src"},
