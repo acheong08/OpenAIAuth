@@ -38,7 +38,6 @@ type Authenticator struct {
 	Password           string
 	Proxy              string
 	Session            tls_client.HttpClient
-	AccessToken        string
 	UserAgent          string
 	State              string
 	URL                string
@@ -375,18 +374,18 @@ func (auth *Authenticator) partSix() *Error {
 }
 
 func (auth *Authenticator) GetAccessToken() string {
-	return auth.AccessToken
+	return auth.AuthResult.AccessToken
 }
 
 func (auth *Authenticator) GetPUID() (string, *Error) {
 	// Check if user has access token
-	if auth.AccessToken == "" {
+	if auth.AuthResult.AccessToken == "" {
 		return "", NewError("get_puid", 0, "Missing access token", fmt.Errorf("error: Check details"))
 	}
 	// Make request to https://chat.openai.com/backend-api/models
 	req, _ := http.NewRequest("GET", "https://chat.openai.com/backend-api/models", nil)
 	// Add headers
-	req.Header.Add("Authorization", "Bearer "+auth.AccessToken)
+	req.Header.Add("Authorization", "Bearer "+auth.AuthResult.AccessToken)
 	req.Header.Add("User-Agent", auth.UserAgent)
 	req.Header.Add("Accept", "application/json")
 	req.Header.Add("Accept-Language", "en-US,en;q=0.9")
@@ -399,6 +398,9 @@ func (auth *Authenticator) GetPUID() (string, *Error) {
 		return "", NewError("get_puid", 0, "Failed to make request", err)
 	}
 	defer resp.Body.Close()
+	if resp.StatusCode != 200 {
+		return "", NewError("get_puid", resp.StatusCode, "Failed to make request", fmt.Errorf("error: Check details"))
+	}
 	// Find `_puid` cookie in response
 	for _, cookie := range resp.Cookies() {
 		if cookie.Name == "_puid" {
@@ -408,4 +410,8 @@ func (auth *Authenticator) GetPUID() (string, *Error) {
 	}
 	// If cookie not found, return error
 	return "", NewError("get_puid", 0, "PUID cookie not found", fmt.Errorf("error: Check details"))
+}
+
+func (auth *Authenticator) GetAuthResult() AuthResult {
+	return auth.AuthResult
 }
