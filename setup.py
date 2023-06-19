@@ -3,7 +3,7 @@ from setuptools import setup
 
 setup(
     name="OpenAIAuth",
-    version="1.0.2",
+    version="1.0.3",
     license="MIT",
     author="pengzhile",
     author_email="acheong@student.dalat.org",
