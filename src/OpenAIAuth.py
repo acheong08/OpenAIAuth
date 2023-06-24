@@ -17,7 +17,6 @@ class Auth0:
         email: str,
         password: str,
         proxy: str = None,
-        use_cache: bool = True,
         mfa: str = None,
     ):
         """
@@ -27,13 +26,11 @@ class Auth0:
         - email (str): The email address of the user.
         - password (str): The password of the user.
         - proxy (str, optional): The proxy server to use for requests. Defaults to None.
-        - use_cache (bool, optional): Flag indicating whether to use cache for access token. Defaults to True.
         - mfa (str, optional): The multi-factor authentication method. Defaults to None.
         """
         self.session_token = None
         self.email = email
         self.password = password
-        self.use_cache = use_cache
         self.mfa = mfa
         self.session = requests.Session()
         self.req_kwargs = {
@@ -58,21 +55,13 @@ class Auth0:
         regex = r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,7}\b"
         return re.fullmatch(regex, email)
 
-    def auth(self) -> str:
+    def get_access_token(self) -> str:
         """
         Authenticates the user and returns the access token.
 
         Returns:
         - str: The access token.
         """
-
-        if (
-            self.use_cache
-            and self.access_token
-            and self.expires
-            and self.expires > dt.now()
-        ):
-            return self.access_token
 
         if not self.__check_email(self.email) or not self.password:
             raise Exception("invalid email or password.")
@@ -187,7 +176,7 @@ class Auth0:
             ):
                 raise Exception("Login callback failed.")
 
-            return self.get_access_token(code_verifier, resp.headers["Location"])
+            return self.__get_access_token(code_verifier, resp.headers["Location"])
 
         raise Exception("Error login.")
 
@@ -219,7 +208,7 @@ class Auth0:
         else:
             raise Exception("Error login.")
 
-    def get_access_token(self, code_verifier: str, callback_url: str) -> str:
+    def __get_access_token(self, code_verifier: str, callback_url: str) -> str:
         url_params = parse_qs(urlparse(callback_url).query)
 
         if "error" in url_params:
@@ -272,7 +261,21 @@ class Auth0:
         resp = self.session.get(url, headers=headers, **self.req_kwargs)
         if resp.status_code == 200:
             # Get _puid cookie
-            self.puid = resp.cookies.get("_puid")
+            puid = resp.headers.get("set-cookie", "")
+            if not puid:
+                raise Exception("Get _puid cookie failed.")
+            self.puid = puid.split("_puid=")[1].split(";")[0]
             return self.puid
         else:
             raise Exception(resp.text)
+
+
+if __name__ == "__main__":
+    import os
+
+    email = os.getenv("OPENAI_EMAIL")
+    password = os.getenv("OPENAI_PASSWORD")
+    openai = Auth0(email, password)
+    print(openai.get_access_token())
+
+    print(openai.get_puid())
