@@ -263,3 +263,16 @@ class Auth0:
             return self.access_token
         else:
             raise Exception(resp.text)
+
+    def get_puid(self) -> str:
+        url = "https://bypass.churchless.tech/models"
+        headers = {
+            "Authorization": "Bearer " + self.access_token,
+        }
+        resp = self.session.get(url, headers=headers, **self.req_kwargs)
+        if resp.status_code == 200:
+            # Get _puid cookie
+            self.puid = resp.cookies.get("_puid")
+            return self.puid
+        else:
+            raise Exception(resp.text)
