@@ -5,7 +5,7 @@ Fetch access tokens for chat.openai.com
 ```py
 from OpenAIAuth import Auth0
 auth = Auth0(email="example@example.com", password="example_password")
-access_token = auth.auth()
+access_token = auth.get_access_token()
 ```
 
 ## Go version
