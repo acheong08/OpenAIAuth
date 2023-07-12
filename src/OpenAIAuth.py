@@ -254,7 +254,7 @@ class Auth0:
             raise Exception(resp.text)
 
     def get_puid(self) -> str:
-        url = "https://bypass.churchless.tech/models"
+        url = getenv("OPENAI_MODELS_URL", "https://bypass.churchless.tech/models")
         headers = {
             "Authorization": "Bearer " + self.access_token,
         }
