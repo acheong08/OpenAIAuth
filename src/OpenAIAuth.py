@@ -8,6 +8,8 @@ from os import getenv
 from urllib.parse import urlparse, parse_qs
 import requests
 from certifi import where
+import uuid
+import json
 
 
 class Auth0:
@@ -69,19 +71,30 @@ class Auth0:
 
     # temporary fix with loaned preauth cookie.
     def __part_one(self):
-        #pandora api https://github.com/pengzhile/pandora/blob/f663d6ecce862e0bd1d8be49893c996ddde521dd/src/pandora/exts/config.py
-        preauth_api = getenv("PREAUTH_API_BASE", 'https://ai-{}.fakeopen.com'.format((dt.now() - datetime.timedelta(days=1)).strftime('%Y%m%d'))) 
-        url = '{}/auth/preauth'.format(preauth_api)
-        resp = self.session.get(url, allow_redirects=False, **self.req_kwargs)
+        url = "https://ios.chat.openai.com/backend-api/preauth_devicecheck"
+        headers = {
+           "User-Agent": "ChatGPT/1.2023.187 (iOS 16.5.1; iPad1 4,3; build 1744)",
+            "Content-Type": "application/json"
+        }
+        
+
+        payload = {
+            "bundle_id": "com.openai.chat",
+            "device_id": str(uuid.uuid4()),
+            "request_flag": True,
+            "device_token": getenv("IOS_DEVICE_TOKEN", "")
+        }
+
+        resp = requests.post(url, headers=headers, data=json.dumps(payload))
 
         if resp.status_code == 200:
-            json = resp.json()
-            if 'preauth_cookie' not in json or not json['preauth_cookie']:
-                raise Exception('Get preauth cookie failed.')
+            preauth = resp.cookies.get("_preauth_devicecheck")
+            if preauth is None:
+                raise Exception('Failed to get preauth cookie. Please check your device token.')
 
-            return self.__part_two(json['preauth_cookie'])
+            return self.__part_two(preauth)
         else:
-            raise Exception('Error request preauth.')
+            raise Exception('Request error when trying to get preauth cookie')
 
 
     def __part_two(self, preauth: str) -> str:
