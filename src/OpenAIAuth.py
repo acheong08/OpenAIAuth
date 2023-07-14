@@ -69,7 +69,6 @@ class Auth0:
 
         return self.__part_one()
 
-    # temporary fix with loaned preauth cookie.
     def __part_one(self):
         url = "https://ios.chat.openai.com/backend-api/preauth_devicecheck"
         headers = {
