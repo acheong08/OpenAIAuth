@@ -69,6 +69,8 @@ class Auth0:
 
     # temporary fix with loaned preauth cookie.
     def __part_one(self):
+        if getenv("PREAUTH_COOKIE"):
+            return self.__part_two(getenv("PREAUTH_COOKIE"))
         #pandora api https://github.com/pengzhile/pandora/blob/f663d6ecce862e0bd1d8be49893c996ddde521dd/src/pandora/exts/config.py
         preauth_api = getenv("PREAUTH_API_BASE", 'https://ai-{}.fakeopen.com'.format((dt.now() - datetime.timedelta(days=1)).strftime('%Y%m%d'))) 
         url = '{}/auth/preauth'.format(preauth_api)
