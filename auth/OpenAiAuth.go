@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"io"
 	"net/url"
+	"os"
+	"time"
 	"regexp"
 	"strings"
 
@@ -43,6 +45,7 @@ type Authenticator struct {
 	URL                string
 	Verifier_code      string
 	Verifier_challenge string
+	PreauthCookie 	   string
 	AuthRequest        AuthRequest
 	AuthResult         AuthResult
 }
@@ -118,10 +121,53 @@ func (auth *Authenticator) URLEncode(str string) string {
 func (auth *Authenticator) Begin() *Error {
 	// Just realized that the client id is hardcoded in the JS file
 
-	return auth.partOne()
+	return auth.preAuth()
 }
-func (auth *Authenticator) partOne() *Error {
 
+func (auth *Authenticator) preAuth() *Error {
+	if len(auth.PreauthCookie) > 0 {
+		return auth.partOne(auth.PreauthCookie)
+	}
+
+	preauthAPI := os.Getenv("PREAUTH_API_BASE")
+	if preauthAPI == "" {
+		preauthAPI = fmt.Sprintf("https://ai-%s.fakeopen.com", time.Now().AddDate(0, 0, -1).Format("20060102"))
+	}
+
+
+
+	req, err := http.NewRequest("GET", fmt.Sprintf("%s/auth/preauth", preauthAPI), nil)
+	req.Header.Set("user-agent", auth.UserAgent)
+	if err != nil {
+		panic(err)
+	}
+	
+	resp, err := auth.Session.Do(req)
+	if err != nil {
+		panic(err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode == 200 {
+		var data map[string]interface{}
+		if err := json.NewDecoder(resp.Body).Decode(&data); err != nil {
+			panic(err)
+		}
+
+		if _, ok := data["preauth_cookie"]; !ok || data["preauth_cookie"] == nil {
+			panic("Get preauth cookie failed.")
+		}
+
+		return auth.partOne(data["preauth_cookie"].(string))
+	} else {
+		panic("Error requesting preauth.")
+	}
+
+}
+
+
+func (auth *Authenticator) partOne(preauth string) *Error {
+	
 	auth_url := "https://auth0.openai.com/authorize"
 	headers := map[string]string{
 		"User-Agent":      auth.UserAgent,
@@ -147,6 +193,7 @@ func (auth *Authenticator) partOne() *Error {
 		"state":                 {auth.AuthRequest.State},
 		"code_challenge":        {auth.AuthRequest.CodeChallenge},
 		"code_challenge_method": {auth.AuthRequest.CodeChallengeMethod},
+		"preauth_cookie": 	 {preauth},
 	}
 	auth_url = auth_url + "?" + payload.Encode()
 	req, _ := http.NewRequest("GET", auth_url, nil)
@@ -220,6 +267,7 @@ func (auth *Authenticator) partThree(state string) *Error {
 		state, emailURLEncoded,
 	)
 
+
 	headers := map[string]string{
 		"Host":            "auth0.openai.com",
 		"Origin":          "https://auth0.openai.com",
@@ -246,7 +294,7 @@ func (auth *Authenticator) partThree(state string) *Error {
 	if resp.StatusCode == 302 || resp.StatusCode == 200 {
 		return auth.partFour(state)
 	} else {
-		return NewError("__part_four", resp.StatusCode, "Your email address is invalid.", fmt.Errorf("error: Check details"))
+		return NewError("__part_four", resp.StatusCode, "Your email address is invalid.", fmt.Errorf("error: Check details \n%+v", resp))
 
 	}
 
