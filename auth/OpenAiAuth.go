@@ -88,12 +88,12 @@ func NewAuthenticator(emailAddress, password, proxy string) *Authenticator {
 		EmailAddress: emailAddress,
 		Password:     password,
 		Proxy:        proxy,
-		UserAgent:    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/109.0.0.0 Safari/537.36",
+		UserAgent:    "ChatGPT/1.2023.187 (iOS 16.5.1; iPhone12,1; build 1744)",
 	}
 	jar := tls_client.NewCookieJar()
 	options := []tls_client.HttpClientOption{
 		tls_client.WithTimeoutSeconds(20),
-		tls_client.WithClientProfile(tls_client.Firefox_102),
+		tls_client.WithClientProfile(tls_client.Safari_IOS_16_0),
 		tls_client.WithNotFollowRedirects(),
 		tls_client.WithCookieJar(jar), // create cookieJar instance and pass it as argument
 		// Proxy
@@ -120,6 +120,61 @@ func (auth *Authenticator) Begin() *Error {
 
 	return auth.partOne()
 }
+
+func (auth *Authenticator) preAuth() (string, *Error) {
+	payload_i := map[string]interface{}{
+		"bundle_id":    "com.openai.chat",
+		"device_id":    "48E1EAA1-5D4D-4279-AA63-D42640CB4FB4",
+		"request_flag": true,
+		"device_token": "AgAAAGt7Kgx9f3T2cRX2ePv6voAEUNk0+me89vLfv5ZingpyOOkgXXXyjPzYTzWmWSu+BYqcD47byirLZ++3dJccpF99hWppT7G5xAuU+y56WpSYsASReisWyEdLbW1RG3c4ZJD0Q/hNHYUNctShMZUvCEz20Yn1XMv+mE/sjSJ/Nd6MgoqKsqnGHqyoxY3mdaodUsVXeggAAJtu2ZFTW7JQMAG12N0ykReJqXJ/BTfPE39UjdZnCXT647a60rxfzJERx8OX5zRLWnCKQfBBTu1TXJNGKjYBeD6x9VeaZU2hpl3utGiVJNL9ozBKh63Gc+f/WYuNKGTi7cawLUB0s9YeAn+rP4In0cPrDMbQWtLL9M/Go3MgxxpaqmlshlLtYpjteSQZ1q+u5/9VNAJhqNxwKg22UOCGJhu8HIuAOGXsQ3BRRcflOT45Pc1U4bKWg06d17DqUtsOHfP/ljyE8X9E8woDOYWEGQtXJxeGKTzHD3jCwRzwLJ0sGKobhOJGp/nMjdgxJ3XyzBIsmH0D3LDOfst1db1vPUjHnVtfuvqukjk8IOALrEaDNwL+kQr/T5noDdPAW+7EVcenSYupSG6Sq1dTH0vs28EuW/NokdivtA+1/PnPKSzSnD8LfLkT7ic+RGXb7Cq54gNbbjC9jPz4YPxLQ+x3N5tKtZXJYsRJYil+6HNbyHz9KSyWlbmgvYpmiKsPLVZ4OSnFeV9/lgGPdO2bItFSFxvxLT091Lzg4QHyRt4C2PvaUkOvs4hniSX5p0cMdEVZF/bkrk+Nhy9XxpssIZc12bb6qyvt9FDXUzbenhl+upmB1Q/Pj3qZLh/o2qZFDpDDnCz3V/yWb1+E6JWb4GPAPgqqdirYJDWPUs2oh3rNrN7w0OcETdUrksgI7UJPARc3jMZ1sbroII0raRdCs9OoiyXF3RbiTSAM6yqwUJUUq3f90Pccy15uXtfY8qUIvvtXUYNF6xAH1GrPsZWNCfIzsotHMQqcjYwd4qVe8ZyC7fM2LZgfL/wfsE7TXwgSzAePKfxWEXj2oDoF3pnorIfqiSijQmiiasaCMAHeSEfmPLTHTTNZIkVnwtLY3xyi27ybbKliHJgoDHlnmRUAWbgENMCkLVoLU4AlzC0UEQHO783vYWGA1sTSYmgqdl0SrPHLqx6TyKzCmbY5Nq3SqUoksPC4PcDYlX72bWcdbkflRUmcevx1dI6rnxd9jwWzPRDiT/Ip7blQGR5ePGuRY0bYGRNlhPiLoU39fOLEQ5puAvIhfGQ4rthY9xfAW/tXmHdVaCFIqOEs/NmeMiQrJqgUbQ+IPCwXfa+Du8+GrxUPp+AkgFIGTgyMHE7eQdrpTYjb8dNPw4h3nuXz++tulN2pKesDw1/2LsbDSfXNZIT857SJhWJK7exlf3TEm8k9zRzTsEq1pwO7QlGInedBNhaYEwGGjLumtQHlT9A0l9mtRuxx4Rf+ux5b2nT3YOVPsegIlQ1r+j0xt1MjkGJchrEt8XLCBkRqYO0k+2YuL0dtmiF+fOGZwDzs4/QRH7omu3CW0RmUMLs0Ej83fES0HcNoAZ5EM+tsNIwZh6Cw0UNo0XUYp6wN5/eUVGXy63dXg64sNavsyrTBwAJjw/Puw26beXRbarSeEql+V4DmL/RmFjxxJTnWIZiGVVkqTdOBvkq8WKKI+ADAekt8MYtctrF0QaT88VpHL3O4tjRDX/FrzY5pq7PqtrGPFH4ymJn+Ar29wCScr6YG4hsWh1GKVa48EXjh43KjiJJ6YZGseOTDBNHuHuWFEP5mkG3MtxUBwlCoj2RODlEHlqSAzEPWBWl2H3HiyxQ9b6C3X27ZVwB9MrrBjNijJQpkhi1CJWl7fWNk48W/j1Wyc9wNMYRAuXQlTqTjh6Kk83VX6QiwF8/QOx1LiZLO0NC1vtp6xtSnLAoksE4ieB84S9QCoPa8lk6URm548w8kiyVCXM0/OvY7OLxA+Lf5oecszBkhJ/ybqMQsUa+J5OvIm0gH4hN9YNcBG778o9xxKcj2uQzlXN7md/GyxxOksmOQptxYmGWU3TPf4daOU+GWcxZuOA2W4zp3Y77PiiHCzUEa5XU4PhIabWQs5yGoYx/er3m/BhIh8WDJ5agsIjGWXrUzeXYzR5sZBBqd0oidxRzLxP7nANK3dhsxaVJM6bFlD+cKY4xZp9N0UaXSaDP2VhOMZnrWYIXplauEjo/7KN+LvpFrCJAOpF5cV4FljOt1oSzhLBekP2DluO5kqZdUEklMkxZxF9nykJPrNP45u8SzPQQvV0v5yT/Lu68q35gfePSGfkRY40mUfO7DsAQQVv+AH9DFXqUGHCSy7ybApTkvd3hREykm81PXK5I6o0V14tMkbF5C4kDUBMCv5FtbBTw67SSsWwGjmdvqp7Nx8ImEjG3hsh0oE1WlCqG4DMBmwc4MXeIFGEyiiC1HAVez51gRI+muFOoXtTetpBV69reseGuWWjjORIcH9guj2mfG4fhJVkl8P0pIUkky06KrEw2gvhsuUj7d54nU+gWnkt/a1s0KEl2CdAKZo9yWFFwJ+uj8K2JkWfktnqC1jdYcCcUVEk02etxSiF9BBemDp+C4pOw3E47jNt9cDfTQlBsRHCvi4jsrPEN3jpye0HiO/zdJm+ffF2XSCEDJ8StjQLg1E2Da9MlYrPr171jmFpoEiWrAWiiuOR3Kn8hqYQ/S3iMQ3GQzVZ1PpG6CtBReCLzXWheeBiPxcvMHTr4Unp+bxpo3jd+Phv5cDRPuzlRXJqpnPx67csGZsBlxALwNPB1ESDQM6L4jFMR8KLkVgjVboAxX8KdD0dLjgtwNBo0cB1MGw8paHVdQbL5COyYBp2kYo3w+hfM9+tfre64XKEXaGE3uUjxN2tGJJ/IAf40ww1vjdcBtP+gw0X4dddf4VPm+vjNrqWjzk1lwb6s3sxU83tuLlkVhFOIbPQS1x0PCHEReTxJm257GejbLZK8luWyp7pOW3c5n53xi9wsxgAM2cRNjy+5RGW6uwk78uW2fSizK+Mme2cYb9C2UvEF4rmEc0onIcNGrcjAuZCARBqetGfUDDcpBr2W1Nxgum+NuQgnhtpY=",
+	}
+
+	payload_b, _ := json.Marshal(payload_i)
+
+	headers := map[string]string{
+		"Accept":          "application/json",
+		"Content-Type":    "application/json",
+		"User-Agent":      auth.UserAgent,
+		"Host":            "ios.chat.openai.com",
+		"OAI-Device-Id":   "48E1EAA1-5D4D-4279-AA63-D42640CB4FB4",
+		"OAI-Client-Type": "ios",
+	}
+
+	req, _ := http.NewRequest("POST", "https://ios.chat.openai.com/backend-api/preauth_devicecheck", bytes.NewBuffer(payload_b))
+	for k, v := range headers {
+		req.Header.Set(k, v)
+	}
+
+	resp, err := auth.Session.Do(req)
+	if err != nil {
+		return "", NewError("preauth_devicecheck", 0, "Failed to send request", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != 200 {
+		return "", NewError("preauth_devicecheck", resp.StatusCode, "Failed to send request", fmt.Errorf("error: Check details"))
+	}
+	var body map[string]interface{}
+	err = json.NewDecoder(resp.Body).Decode(&body)
+	if err != nil {
+		return "", NewError("preauth_devicecheck", 0, "Failed to read body", err)
+	}
+
+	// Look for _preauth_devicecheck preauth_cookie in response set-preauth_cookie header
+	preauth_cookie := ""
+	for _, c := range resp.Cookies() {
+		if c.Name == "_preauth_devicecheck" {
+			preauth_cookie = c.Value
+		}
+	}
+
+	if preauth_cookie == "" {
+		return "", NewError("preauth_devicecheck", 0, "Failed to find preauth_cookie", fmt.Errorf("error: Check details"))
+	}
+
+	return preauth_cookie, nil
+
+}
+
 func (auth *Authenticator) partOne() *Error {
 
 	auth_url := "https://auth0.openai.com/authorize"
@@ -136,6 +191,11 @@ func (auth *Authenticator) partOne() *Error {
 		"Referer":         "https://chat.openai.com/auth/login",
 		"Accept-Encoding": "gzip, deflate",
 	}
+
+	preauth_cookie, err1 := auth.preAuth()
+	if err1 != nil {
+		return err1
+	}
 	// Construct payload
 	payload := url.Values{
 		"client_id":             {auth.AuthRequest.ClientID},
@@ -147,6 +207,9 @@ func (auth *Authenticator) partOne() *Error {
 		"state":                 {auth.AuthRequest.State},
 		"code_challenge":        {auth.AuthRequest.CodeChallenge},
 		"code_challenge_method": {auth.AuthRequest.CodeChallengeMethod},
+		"ios_app_version":       {"1744"},
+		"ios_device_id":         {"48E1EAA1-5D4D-4279-AA63-D42640CB4FB4"},
+		"preauth_cookie":        {preauth_cookie},
 	}
 	auth_url = auth_url + "?" + payload.Encode()
 	req, _ := http.NewRequest("GET", auth_url, nil)
@@ -166,7 +229,6 @@ func (auth *Authenticator) partOne() *Error {
 	}
 
 	if resp.StatusCode == 302 {
-		println("Redirecting to: " + resp.Header.Get("Location"))
 		return auth.partTwo("https://auth0.openai.com" + resp.Header.Get("Location"))
 	} else {
 		return NewError("part_one", resp.StatusCode, string(body), fmt.Errorf("error: Check details"))
