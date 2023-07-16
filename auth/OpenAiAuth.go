@@ -166,6 +166,7 @@ func (auth *Authenticator) partOne() *Error {
 	}
 
 	if resp.StatusCode == 302 {
+		println("Redirecting to: " + resp.Header.Get("Location"))
 		return auth.partTwo("https://auth0.openai.com" + resp.Header.Get("Location"))
 	} else {
 		return NewError("part_one", resp.StatusCode, string(body), fmt.Errorf("error: Check details"))
@@ -206,7 +207,7 @@ func (auth *Authenticator) partTwo(url string) *Error {
 		state := strings.Split(stateMatch[1], `"`)[0]
 		return auth.partThree(state)
 	} else {
-		return NewError("__part_two", resp.StatusCode, string(body), fmt.Errorf("error: Check details"))
+		return NewError("part_two", resp.StatusCode, string(body), fmt.Errorf("error: Check details"))
 
 	}
 }
@@ -239,14 +240,14 @@ func (auth *Authenticator) partThree(state string) *Error {
 
 	resp, err := auth.Session.Do(req)
 	if err != nil {
-		return NewError("part_four", 0, "Failed to send request", err)
+		return NewError("part_three", 0, "Failed to send request", err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode == 302 || resp.StatusCode == 200 {
 		return auth.partFour(state)
 	} else {
-		return NewError("__part_four", resp.StatusCode, "Your email address is invalid.", fmt.Errorf("error: Check details"))
+		return NewError("part_three", resp.StatusCode, "Your email address is invalid.", fmt.Errorf("error: Check details"))
 
 	}
 
@@ -277,7 +278,7 @@ func (auth *Authenticator) partFour(state string) *Error {
 
 	resp, err := auth.Session.Do(req)
 	if err != nil {
-		return NewError("part_five", 0, "Failed to send request", err)
+		return NewError("part_four", 0, "Failed to send request", err)
 	}
 	defer resp.Body.Close()
 
@@ -287,7 +288,7 @@ func (auth *Authenticator) partFour(state string) *Error {
 	} else {
 		body := bytes.NewBuffer(nil)
 		body.ReadFrom(resp.Body)
-		return NewError("__part_five", resp.StatusCode, body.String(), fmt.Errorf("error: Check details"))
+		return NewError("part_four", resp.StatusCode, body.String(), fmt.Errorf("error: Check details"))
 
 	}
 
@@ -313,7 +314,7 @@ func (auth *Authenticator) partFive(oldState string, redirectURL string) *Error 
 
 	resp, err := auth.Session.Do(req)
 	if err != nil {
-		return NewError("part_six", 0, "Failed to send request", err)
+		return NewError("part_five", 0, "Failed to send request", err)
 	}
 	defer resp.Body.Close()
 
@@ -321,7 +322,7 @@ func (auth *Authenticator) partFive(oldState string, redirectURL string) *Error 
 		auth.URL = resp.Header.Get("Location")
 		return auth.partSix()
 	} else {
-		return NewError("__part_six", resp.StatusCode, resp.Status, fmt.Errorf("error: Check details"))
+		return NewError("part_five", resp.StatusCode, resp.Status, fmt.Errorf("error: Check details"))
 
 	}
 
@@ -329,7 +330,7 @@ func (auth *Authenticator) partFive(oldState string, redirectURL string) *Error 
 func (auth *Authenticator) partSix() *Error {
 	code := regexp.MustCompile(`code=(.*)&`).FindStringSubmatch(auth.URL)
 	if len(code) == 0 {
-		return NewError("__get_access_token", 0, auth.URL, fmt.Errorf("error: Check details"))
+		return NewError("part_six", 0, auth.URL, fmt.Errorf("error: Check details"))
 	}
 	payload, _ := json.Marshal(map[string]string{
 		"redirect_uri":  "com.openai.chat://auth0.openai.com/ios/com.openai.chat/callback",
@@ -349,7 +350,7 @@ func (auth *Authenticator) partSix() *Error {
 	}
 	resp, err := auth.Session.Do(req)
 	if err != nil {
-		return NewError("get_access_token", 0, "Failed to send request", err)
+		return NewError("part_six", 0, "Failed to send request", err)
 	}
 	defer resp.Body.Close()
 	// Parse response
@@ -360,12 +361,12 @@ func (auth *Authenticator) partSix() *Error {
 	err = json.Unmarshal(body, &data)
 
 	if err != nil {
-		return NewError("get_access_token", 0, "Response was not JSON", err)
+		return NewError("part_six", 0, "Response was not JSON", err)
 	}
 
 	// Check if access token in data
 	if _, ok := data["access_token"]; !ok {
-		return NewError("get_access_token", 0, "Missing access token", fmt.Errorf("error: Check details"))
+		return NewError("part_six", 0, "Missing access token", fmt.Errorf("error: Check details"))
 	}
 	auth.AuthResult.AccessToken = data["access_token"].(string)
 	auth.AuthResult.RefreshToken = data["refresh_token"].(string)
