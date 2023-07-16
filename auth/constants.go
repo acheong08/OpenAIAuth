@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"os"
 	"strings"
 
 	"github.com/google/uuid"
@@ -14,4 +15,8 @@ var ios_device_id string
 func init() {
 	// Capitalize all letters
 	ios_device_id = strings.ToUpper(uuid.New().String())
+
+	if os.Getenv("IOS_DEVICE_ID") != "" {
+		ios_device_id = os.Getenv("IOS_DEVICE_ID")
+	}
 }
