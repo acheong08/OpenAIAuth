@@ -121,7 +121,7 @@ func (auth *Authenticator) Begin() *Error {
 	return auth.partOne()
 }
 
-func (auth *Authenticator) preAuth() (string, *Error) {
+func (auth *Authenticator) PreAuth() (string, *Error) {
 	payload_i := map[string]interface{}{
 		"bundle_id":    "com.openai.chat",
 		"device_id":    ios_device_id,
@@ -151,14 +151,20 @@ func (auth *Authenticator) preAuth() (string, *Error) {
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != 200 {
-		return "", NewError("preauth_devicecheck", resp.StatusCode, "Failed to send request", fmt.Errorf("error: Check details"))
+		raw_body, _ := io.ReadAll(resp.Body)
+
+		return "", NewError("preauth_devicecheck", resp.StatusCode, string(raw_body), fmt.Errorf("error: Check details"))
 	}
+
 	var body map[string]interface{}
 	err = json.NewDecoder(resp.Body).Decode(&body)
 	if err != nil {
 		return "", NewError("preauth_devicecheck", 0, "Failed to read body", err)
 	}
 
+	if body["status_code"] != nil && body["status_code"].(float64) != 200 {
+		return "", NewError("preauth_devicecheck", int(body["status_code"].(float64)), "", fmt.Errorf("error: Check details"))
+	}
 	// Look for _preauth_devicecheck preauth_cookie in response set-preauth_cookie header
 	preauth_cookie := ""
 	for _, c := range resp.Cookies() {
@@ -192,7 +198,7 @@ func (auth *Authenticator) partOne() *Error {
 		"Accept-Encoding": "gzip, deflate",
 	}
 
-	preauth_cookie, err1 := auth.preAuth()
+	preauth_cookie, err1 := auth.PreAuth()
 	if err1 != nil {
 		return err1
 	}
