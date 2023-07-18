@@ -1,1 +1,3 @@
 requests
+undetected_chromedriver
+selenium
