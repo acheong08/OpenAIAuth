@@ -18,7 +18,7 @@ class Auth0:
         self.username = email#username
         self.password = password
         self.driver = None
-        self.headless = False
+        self.headless = True
         self.pageload_max = 10
 
         #mfa & proxy is ignored for now.
