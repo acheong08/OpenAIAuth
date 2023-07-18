@@ -29,11 +29,7 @@ class Auth0:
             self.driver = uc.Chrome(headless=self.headless)
 
     
-    #legacy compat mode
     def get_access_token(self) -> str:
-        return self.login()
-
-    def login(self):
         #launch on demand
         self.init_driver()
         driver = self.driver
@@ -82,8 +78,7 @@ class Auth0:
                     EC.presence_of_element_located((By.XPATH, "/html/body/div[1]/div[1]/div[1]/div/div/div/nav/div[3]/div/div/span[1]"))
             )
         except:
-            print("timeout")
-            pass
+            print("timeout, either the site loaded very fast or theres a problem.")
 
 
         for cookie in self.driver.get_cookies():
@@ -112,7 +107,6 @@ class Auth0:
         if self.driver is not None:
             self.driver.quit()
             self.driver = None
-        pass
 
     """
     //*[@id="radix-:rg:"]/div[2]/div[1]/div[2]/button
