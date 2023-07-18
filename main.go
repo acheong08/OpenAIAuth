@@ -19,7 +19,7 @@ func main() {
 		return
 	}
 	// if os.Getenv("PROXY") != "" {
-	puid, err := auth.GetPUID()
+	_, err = auth.GetPUID()
 	if err != nil {
 		println("Error: " + err.Details)
 		println("Location: " + err.Location)
@@ -27,7 +27,6 @@ func main() {
 		println("Embedded error: " + err.Error.Error())
 		return
 	}
-	println("PUID: " + puid)
 	// }
 	// JSON encode auth.GetAuthResult()
 	result := auth.GetAuthResult()

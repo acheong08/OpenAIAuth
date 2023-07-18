@@ -2,15 +2,12 @@ package auth
 
 import (
 	"bytes"
-	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/url"
 	"regexp"
 	"strings"
-
-	"crypto/rand"
 
 	http "github.com/bogdanfinn/fhttp"
 	tls_client "github.com/bogdanfinn/tls-client"
@@ -43,44 +40,12 @@ type Authenticator struct {
 	URL                string
 	Verifier_code      string
 	Verifier_challenge string
-	AuthRequest        AuthRequest
 	AuthResult         AuthResult
 }
 
-type AuthRequest struct {
-	ClientID            string `json:"client_id"`
-	Scope               string `json:"scope"`
-	ResponseType        string `json:"response_type"`
-	RedirectURL         string `json:"redirect_url"`
-	Audience            string `json:"audience"`
-	Prompt              string `json:"prompt"`
-	State               string `json:"state"`
-	CodeChallenge       string `json:"code_challenge"`
-	CodeChallengeMethod string `json:"code_challenge_method"`
-}
-
 type AuthResult struct {
-	AccessToken  string `json:"access_token"`
-	RefreshToken string `json:"refresh_token"`
-	PUID         string `json:"puid"`
-}
-
-func NewAuthDetails(challenge string) AuthRequest {
-	// Generate state (secrets.token_urlsafe(32))
-	b := make([]byte, 32)
-	rand.Read(b)
-	state := base64.URLEncoding.EncodeToString(b)
-	return AuthRequest{
-		ClientID:            "pdlLIX2Y72MIl2rhLhTE9VV9bN905kBh",
-		Scope:               "openid email profile offline_access model.request model.read organization.read",
-		ResponseType:        "code",
-		RedirectURL:         "com.openai.chat://auth0.openai.com/ios/com.openai.chat/callback",
-		Audience:            "https://api.openai.com/v1",
-		Prompt:              "login",
-		State:               state,
-		CodeChallenge:       challenge,
-		CodeChallengeMethod: "S256",
-	}
+	AccessToken string `json:"access_token"`
+	PUID        string `json:"puid"`
 }
 
 func NewAuthenticator(emailAddress, password, proxy string) *Authenticator {
@@ -105,8 +70,6 @@ func NewAuthenticator(emailAddress, password, proxy string) *Authenticator {
 	verifier, _ := pkce.CreateCodeVerifier()
 	auth.Verifier_code = verifier.String()
 	auth.Verifier_challenge = verifier.CodeChallengeS256()
-
-	auth.AuthRequest = NewAuthDetails(auth.Verifier_challenge)
 
 	return auth
 }
@@ -180,7 +143,7 @@ func (auth *Authenticator) partOne(csrfToken string) *Error {
 
 	// Construct payload
 	payload := fmt.Sprintf("callbackUrl=%%2F&csrfToken=%s&json=true", csrfToken)
-	req, _ := http.NewRequest("GET", auth_url, strings.NewReader(payload))
+	req, _ := http.NewRequest("POST", auth_url, strings.NewReader(payload))
 
 	for k, v := range headers {
 		req.Header.Set(k, v)
@@ -208,7 +171,7 @@ func (auth *Authenticator) partOne(csrfToken string) *Error {
 			err := NewError("part_one", resp.StatusCode, "You have been rate limited. Please try again later.", fmt.Errorf("error: Check details"))
 			return err
 		}
-		return auth.partTwo("https://auth0.openai.com" + urlResponse.URL)
+		return auth.partTwo(urlResponse.URL)
 	} else {
 		return NewError("part_one", resp.StatusCode, string(body), fmt.Errorf("error: Check details"))
 	}
@@ -360,32 +323,22 @@ func (auth *Authenticator) partFive(oldState string, redirectURL string) *Error 
 	defer resp.Body.Close()
 
 	if resp.StatusCode == 302 {
-		auth.URL = resp.Header.Get("Location")
-		return auth.partSix()
+		return auth.partSix(resp.Header.Get("Location"), url)
 	} else {
 		return NewError("part_five", resp.StatusCode, resp.Status, fmt.Errorf("error: Check details"))
 
 	}
 
 }
-func (auth *Authenticator) partSix() *Error {
-	code := regexp.MustCompile(`code=(.*)&`).FindStringSubmatch(auth.URL)
-	if len(code) == 0 {
-		return NewError("part_six", 0, auth.URL, fmt.Errorf("error: Check details"))
-	}
-	payload, _ := json.Marshal(map[string]string{
-		"redirect_uri":  "com.openai.chat://auth0.openai.com/ios/com.openai.chat/callback",
-		"grant_type":    "authorization_code",
-		"client_id":     "pdlLIX2Y72MIl2rhLhTE9VV9bN905kBh",
-		"code":          code[1],
-		"code_verifier": auth.Verifier_code,
-		"state":         auth.State,
-	})
-
-	req, _ := http.NewRequest("POST", "https://auth0.openai.com/oauth/token", strings.NewReader(string(payload)))
+func (auth *Authenticator) partSix(url, redirect_url string) *Error {
+	req, _ := http.NewRequest("GET", url, nil)
 	for k, v := range map[string]string{
-		"User-Agent":   auth.UserAgent,
-		"content-type": "application/json",
+		"Host":            "chat.openai.com",
+		"Accept":          "application/json",
+		"Connection":      "keep-alive",
+		"User-Agent":      auth.UserAgent,
+		"Accept-Language": "en-GB,en-US;q=0.9,en;q=0.8",
+		"Referer":         redirect_url,
 	} {
 		req.Header.Set(k, v)
 	}
@@ -394,23 +347,35 @@ func (auth *Authenticator) partSix() *Error {
 		return NewError("part_six", 0, "Failed to send request", err)
 	}
 	defer resp.Body.Close()
-	// Parse response
-	body, _ := io.ReadAll(resp.Body)
-	// Parse as JSON
-	var data map[string]interface{}
-
-	err = json.Unmarshal(body, &data)
-
 	if err != nil {
 		return NewError("part_six", 0, "Response was not JSON", err)
 	}
 
+	url = "https://chat.openai.com/api/auth/session"
+
+	req, _ = http.NewRequest("GET", url, nil)
+
+	// Set user agent
+	req.Header.Set("User-Agent", auth.UserAgent)
+
+	resp, err = auth.Session.Do(req)
+	if err != nil {
+		return NewError("get_access_token", 0, "Failed to send request", err)
+	}
+
+	if resp.StatusCode != 200 {
+		return NewError("get_access_token", resp.StatusCode, "Incorrect response code", fmt.Errorf("error: Check details"))
+	}
+	var result map[string]interface{}
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return NewError("get_access_token", 0, "", err)
+	}
+
 	// Check if access token in data
-	if _, ok := data["access_token"]; !ok {
+	if _, ok := result["accessToken"]; !ok {
 		return NewError("part_six", 0, "Missing access token", fmt.Errorf("error: Check details"))
 	}
-	auth.AuthResult.AccessToken = data["access_token"].(string)
-	auth.AuthResult.RefreshToken = data["refresh_token"].(string)
+	auth.AuthResult.AccessToken = result["accessToken"].(string)
 
 	return nil
 }
