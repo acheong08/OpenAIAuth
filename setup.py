@@ -10,7 +10,7 @@ setup(
     description="OpenAI Authentication Reverse Engineered",
     packages=find_packages("src"),
     package_dir={"": "src"},
-    py_modules=["OpenAIAuth"],
+    py_modules=["OpenAIAuth", "OpenAIAuthWeb"],
     url="https://github.com/acheong08/OpenAIAuth",
     project_urls={"Bug Report": "https://github.com/acheong08/OpenAIAuth/issues/new"},
     install_requires=[
