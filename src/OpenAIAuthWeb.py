@@ -18,7 +18,7 @@ class Auth0:
         self.username = email#username
         self.password = password
         self.driver = None
-        self.headless = True
+        self.headless = False
         self.pageload_max = 10
 
         #mfa & proxy is ignored for now.
@@ -74,14 +74,11 @@ class Auth0:
 
         #load the whole page after login to get PUID
         #needs some adjusting..
+        
+        #/html/body/div[1]/div[1]/div[1]/div/div/div/nav/div[3]/div/svg    -> /html/body/div[1]/div[1]/div[1]/div/div/div/nav/div[3]/div
         try:
             WebDriverWait(driver, self.pageload_max).until(
-                    EC.presence_of_element_located((By.CSS_SELECTOR, ".animate-spin")),
-                    EC.presence_of_element_located((By.XPATH, "/html/body/div[1]/div[1]/div[1]/div/div/div/nav/div[3]/div/div/span[1]"))
-            )
-            print("page loaded?")
-            WebDriverWait(driver, self.pageload_max).until(
-                    EC.invisibility_of_element_located((By.CSS_SELECTOR, ".animate-spin")),
+                    EC.invisibility_of_element_located((By.XPATH, "/html/body/div[1]/div[1]/div[1]/div/div/div/nav/div[3]/div/svg")),
                     EC.presence_of_element_located((By.XPATH, "/html/body/div[1]/div[1]/div[1]/div/div/div/nav/div[3]/div/div/span[1]"))
             )
         except:
