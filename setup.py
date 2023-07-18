@@ -15,6 +15,8 @@ setup(
     project_urls={"Bug Report": "https://github.com/acheong08/OpenAIAuth/issues/new"},
     install_requires=[
         "requests",
+        "undetected_chromedriver",
+        "selenium"
     ],
     classifiers=[
         "License :: OSI Approved :: MIT License",
