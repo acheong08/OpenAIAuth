@@ -88,12 +88,12 @@ func NewAuthenticator(emailAddress, password, proxy string) *Authenticator {
 		EmailAddress: emailAddress,
 		Password:     password,
 		Proxy:        proxy,
-		UserAgent:    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/109.0.0.0 Safari/537.36",
+		UserAgent:    "ChatGPT/1.2023.187 (iOS 16.5.1; iPhone12,1; build 1744)",
 	}
 	jar := tls_client.NewCookieJar()
 	options := []tls_client.HttpClientOption{
 		tls_client.WithTimeoutSeconds(20),
-		tls_client.WithClientProfile(tls_client.Firefox_102),
+		tls_client.WithClientProfile(tls_client.Safari_IOS_16_0),
 		tls_client.WithNotFollowRedirects(),
 		tls_client.WithCookieJar(jar), // create cookieJar instance and pass it as argument
 		// Proxy
@@ -120,6 +120,67 @@ func (auth *Authenticator) Begin() *Error {
 
 	return auth.partOne()
 }
+
+func (auth *Authenticator) PreAuth() (string, *Error) {
+	payload_i := map[string]interface{}{
+		"bundle_id":    "com.openai.chat",
+		"device_id":    ios_device_id,
+		"request_flag": true,
+		"device_token": device_token,
+	}
+
+	payload_b, _ := json.Marshal(payload_i)
+
+	headers := map[string]string{
+		"Accept":          "application/json",
+		"Content-Type":    "application/json",
+		"User-Agent":      auth.UserAgent,
+		"Host":            "ios.chat.openai.com",
+		"OAI-Device-Id":   ios_device_id,
+		"OAI-Client-Type": "ios",
+	}
+
+	req, _ := http.NewRequest("POST", "https://ios.chat.openai.com/backend-api/preauth_devicecheck", bytes.NewBuffer(payload_b))
+	for k, v := range headers {
+		req.Header.Set(k, v)
+	}
+
+	resp, err := auth.Session.Do(req)
+	if err != nil {
+		return "", NewError("preauth_devicecheck", 0, "Failed to send request", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != 200 {
+		raw_body, _ := io.ReadAll(resp.Body)
+
+		return "", NewError("preauth_devicecheck", resp.StatusCode, string(raw_body), fmt.Errorf("error: Check details"))
+	}
+
+	var body map[string]interface{}
+	err = json.NewDecoder(resp.Body).Decode(&body)
+	if err != nil {
+		return "", NewError("preauth_devicecheck", 0, "Failed to read body", err)
+	}
+
+	if body["status_code"] != nil && body["status_code"].(float64) != 200 {
+		return "", NewError("preauth_devicecheck", int(body["status_code"].(float64)), "", fmt.Errorf("error: Check details"))
+	}
+	// Look for _preauth_devicecheck preauth_cookie in response set-preauth_cookie header
+	preauth_cookie := ""
+	for _, c := range resp.Cookies() {
+		if c.Name == "_preauth_devicecheck" {
+			preauth_cookie = c.Value
+		}
+	}
+
+	if preauth_cookie == "" {
+		return "", NewError("preauth_devicecheck", 0, "Failed to find preauth_cookie", fmt.Errorf("error: Check details"))
+	}
+
+	return preauth_cookie, nil
+
+}
+
 func (auth *Authenticator) partOne() *Error {
 
 	auth_url := "https://auth0.openai.com/authorize"
@@ -136,6 +197,11 @@ func (auth *Authenticator) partOne() *Error {
 		"Referer":         "https://chat.openai.com/auth/login",
 		"Accept-Encoding": "gzip, deflate",
 	}
+
+	preauth_cookie, err1 := auth.PreAuth()
+	if err1 != nil {
+		return err1
+	}
 	// Construct payload
 	payload := url.Values{
 		"client_id":             {auth.AuthRequest.ClientID},
@@ -147,6 +213,9 @@ func (auth *Authenticator) partOne() *Error {
 		"state":                 {auth.AuthRequest.State},
 		"code_challenge":        {auth.AuthRequest.CodeChallenge},
 		"code_challenge_method": {auth.AuthRequest.CodeChallengeMethod},
+		"ios_app_version":       {ios_app_version},
+		"ios_device_id":         {ios_device_id},
+		"preauth_cookie":        {preauth_cookie},
 	}
 	auth_url = auth_url + "?" + payload.Encode()
 	req, _ := http.NewRequest("GET", auth_url, nil)
@@ -206,7 +275,7 @@ func (auth *Authenticator) partTwo(url string) *Error {
 		state := strings.Split(stateMatch[1], `"`)[0]
 		return auth.partThree(state)
 	} else {
-		return NewError("__part_two", resp.StatusCode, string(body), fmt.Errorf("error: Check details"))
+		return NewError("part_two", resp.StatusCode, string(body), fmt.Errorf("error: Check details"))
 
 	}
 }
@@ -239,14 +308,14 @@ func (auth *Authenticator) partThree(state string) *Error {
 
 	resp, err := auth.Session.Do(req)
 	if err != nil {
-		return NewError("part_four", 0, "Failed to send request", err)
+		return NewError("part_three", 0, "Failed to send request", err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode == 302 || resp.StatusCode == 200 {
 		return auth.partFour(state)
 	} else {
-		return NewError("__part_four", resp.StatusCode, "Your email address is invalid.", fmt.Errorf("error: Check details"))
+		return NewError("part_three", resp.StatusCode, "Your email address is invalid.", fmt.Errorf("error: Check details"))
 
 	}
 
@@ -277,7 +346,7 @@ func (auth *Authenticator) partFour(state string) *Error {
 
 	resp, err := auth.Session.Do(req)
 	if err != nil {
-		return NewError("part_five", 0, "Failed to send request", err)
+		return NewError("part_four", 0, "Failed to send request", err)
 	}
 	defer resp.Body.Close()
 
@@ -287,7 +356,7 @@ func (auth *Authenticator) partFour(state string) *Error {
 	} else {
 		body := bytes.NewBuffer(nil)
 		body.ReadFrom(resp.Body)
-		return NewError("__part_five", resp.StatusCode, body.String(), fmt.Errorf("error: Check details"))
+		return NewError("part_four", resp.StatusCode, body.String(), fmt.Errorf("error: Check details"))
 
 	}
 
@@ -313,7 +382,7 @@ func (auth *Authenticator) partFive(oldState string, redirectURL string) *Error 
 
 	resp, err := auth.Session.Do(req)
 	if err != nil {
-		return NewError("part_six", 0, "Failed to send request", err)
+		return NewError("part_five", 0, "Failed to send request", err)
 	}
 	defer resp.Body.Close()
 
@@ -321,7 +390,7 @@ func (auth *Authenticator) partFive(oldState string, redirectURL string) *Error 
 		auth.URL = resp.Header.Get("Location")
 		return auth.partSix()
 	} else {
-		return NewError("__part_six", resp.StatusCode, resp.Status, fmt.Errorf("error: Check details"))
+		return NewError("part_five", resp.StatusCode, resp.Status, fmt.Errorf("error: Check details"))
 
 	}
 
@@ -329,7 +398,7 @@ func (auth *Authenticator) partFive(oldState string, redirectURL string) *Error 
 func (auth *Authenticator) partSix() *Error {
 	code := regexp.MustCompile(`code=(.*)&`).FindStringSubmatch(auth.URL)
 	if len(code) == 0 {
-		return NewError("__get_access_token", 0, auth.URL, fmt.Errorf("error: Check details"))
+		return NewError("part_six", 0, auth.URL, fmt.Errorf("error: Check details"))
 	}
 	payload, _ := json.Marshal(map[string]string{
 		"redirect_uri":  "com.openai.chat://auth0.openai.com/ios/com.openai.chat/callback",
@@ -349,7 +418,7 @@ func (auth *Authenticator) partSix() *Error {
 	}
 	resp, err := auth.Session.Do(req)
 	if err != nil {
-		return NewError("get_access_token", 0, "Failed to send request", err)
+		return NewError("part_six", 0, "Failed to send request", err)
 	}
 	defer resp.Body.Close()
 	// Parse response
@@ -360,12 +429,12 @@ func (auth *Authenticator) partSix() *Error {
 	err = json.Unmarshal(body, &data)
 
 	if err != nil {
-		return NewError("get_access_token", 0, "Response was not JSON", err)
+		return NewError("part_six", 0, "Response was not JSON", err)
 	}
 
 	// Check if access token in data
 	if _, ok := data["access_token"]; !ok {
-		return NewError("get_access_token", 0, "Missing access token", fmt.Errorf("error: Check details"))
+		return NewError("part_six", 0, "Missing access token", fmt.Errorf("error: Check details"))
 	}
 	auth.AuthResult.AccessToken = data["access_token"].(string)
 	auth.AuthResult.RefreshToken = data["refresh_token"].(string)
