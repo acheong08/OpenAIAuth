@@ -116,75 +116,55 @@ func (auth *Authenticator) URLEncode(str string) string {
 }
 
 func (auth *Authenticator) Begin() *Error {
-	// Just realized that the client id is hardcoded in the JS file
 
-	return auth.partOne()
-}
-
-func (auth *Authenticator) PreAuth() (string, *Error) {
-	payload_i := map[string]interface{}{
-		"bundle_id":    "com.openai.chat",
-		"device_id":    ios_device_id,
-		"request_flag": true,
-		"device_token": device_token,
+	url := "https://chat.openai.com/api/auth/csrf"
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return NewError("begin", 0, "", err)
 	}
 
-	payload_b, _ := json.Marshal(payload_i)
-
-	headers := map[string]string{
-		"Accept":          "application/json",
-		"Content-Type":    "application/json",
-		"User-Agent":      auth.UserAgent,
-		"Host":            "ios.chat.openai.com",
-		"OAI-Device-Id":   ios_device_id,
-		"OAI-Client-Type": "ios",
-	}
-
-	req, _ := http.NewRequest("POST", "https://ios.chat.openai.com/backend-api/preauth_devicecheck", bytes.NewBuffer(payload_b))
-	for k, v := range headers {
-		req.Header.Set(k, v)
-	}
+	req.Header.Set("Host", "chat.openai.com")
+	req.Header.Set("Accept", "*/*")
+	req.Header.Set("Connection", "keep-alive")
+	req.Header.Set("User-Agent", auth.UserAgent)
+	req.Header.Set("Accept-Language", "en-GB,en-US;q=0.9,en;q=0.8")
+	req.Header.Set("Referer", "https://chat.openai.com/auth/login")
+	req.Header.Set("Accept-Encoding", "gzip, deflate, br")
 
 	resp, err := auth.Session.Do(req)
 	if err != nil {
-		return "", NewError("preauth_devicecheck", 0, "Failed to send request", err)
+		return NewError("begin", 0, "", err)
 	}
 	defer resp.Body.Close()
-	if resp.StatusCode != 200 {
-		raw_body, _ := io.ReadAll(resp.Body)
 
-		return "", NewError("preauth_devicecheck", resp.StatusCode, string(raw_body), fmt.Errorf("error: Check details"))
-	}
-
-	var body map[string]interface{}
-	err = json.NewDecoder(resp.Body).Decode(&body)
+	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return "", NewError("preauth_devicecheck", 0, "Failed to read body", err)
+		return NewError("begin", 0, "", err)
 	}
 
-	if body["status_code"] != nil && body["status_code"].(float64) != 200 {
-		return "", NewError("preauth_devicecheck", int(body["status_code"].(float64)), "", fmt.Errorf("error: Check details"))
-	}
-	// Look for _preauth_devicecheck preauth_cookie in response set-preauth_cookie header
-	preauth_cookie := ""
-	for _, c := range resp.Cookies() {
-		if c.Name == "_preauth_devicecheck" {
-			preauth_cookie = c.Value
+	if resp.StatusCode == 200 && strings.Contains(resp.Header.Get("Content-Type"), "json") {
+
+		var csrfTokenResponse struct {
+			CsrfToken string `json:"csrfToken"`
 		}
+		err = json.Unmarshal(body, &csrfTokenResponse)
+		if err != nil {
+			return NewError("begin", 0, "", err)
+		}
+
+		csrfToken := csrfTokenResponse.CsrfToken
+		return auth.partOne(csrfToken)
+	} else {
+		err := NewError("begin", resp.StatusCode, string(body), fmt.Errorf("error: Check details"))
+		return err
 	}
-
-	if preauth_cookie == "" {
-		return "", NewError("preauth_devicecheck", 0, "Failed to find preauth_cookie", fmt.Errorf("error: Check details"))
-	}
-
-	return preauth_cookie, nil
-
 }
 
-func (auth *Authenticator) partOne() *Error {
+func (auth *Authenticator) partOne(csrfToken string) *Error {
 
-	auth_url := "https://auth0.openai.com/authorize"
+	auth_url := "https://chat.openai.com/api/auth/signin/auth0?prompt=login"
 	headers := map[string]string{
+		"Host":            "chat.openai.com",
 		"User-Agent":      auth.UserAgent,
 		"Content-Type":    "application/x-www-form-urlencoded",
 		"Accept":          "*/*",
@@ -198,27 +178,9 @@ func (auth *Authenticator) partOne() *Error {
 		"Accept-Encoding": "gzip, deflate",
 	}
 
-	preauth_cookie, err1 := auth.PreAuth()
-	if err1 != nil {
-		return err1
-	}
 	// Construct payload
-	payload := url.Values{
-		"client_id":             {auth.AuthRequest.ClientID},
-		"scope":                 {auth.AuthRequest.Scope},
-		"response_type":         {auth.AuthRequest.ResponseType},
-		"redirect_uri":          {auth.AuthRequest.RedirectURL},
-		"audience":              {auth.AuthRequest.Audience},
-		"prompt":                {auth.AuthRequest.Prompt},
-		"state":                 {auth.AuthRequest.State},
-		"code_challenge":        {auth.AuthRequest.CodeChallenge},
-		"code_challenge_method": {auth.AuthRequest.CodeChallengeMethod},
-		"ios_app_version":       {ios_app_version},
-		"ios_device_id":         {ios_device_id},
-		"preauth_cookie":        {preauth_cookie},
-	}
-	auth_url = auth_url + "?" + payload.Encode()
-	req, _ := http.NewRequest("GET", auth_url, nil)
+	payload := fmt.Sprintf("callbackUrl=%%2F&csrfToken=%s&json=true", csrfToken)
+	req, _ := http.NewRequest("GET", auth_url, strings.NewReader(payload))
 
 	for k, v := range headers {
 		req.Header.Set(k, v)
@@ -234,8 +196,19 @@ func (auth *Authenticator) partOne() *Error {
 		return NewError("part_one", 0, "Failed to read body", err)
 	}
 
-	if resp.StatusCode == 302 {
-		return auth.partTwo("https://auth0.openai.com" + resp.Header.Get("Location"))
+	if resp.StatusCode == 200 && strings.Contains(resp.Header.Get("Content-Type"), "json") {
+		var urlResponse struct {
+			URL string `json:"url"`
+		}
+		err = json.Unmarshal(body, &urlResponse)
+		if err != nil {
+			return NewError("part_one", 0, "Failed to decode JSON", err)
+		}
+		if urlResponse.URL == "https://chat.openai.com/api/auth/error?error=OAuthSignin" || strings.Contains(urlResponse.URL, "error") {
+			err := NewError("part_one", resp.StatusCode, "You have been rate limited. Please try again later.", fmt.Errorf("error: Check details"))
+			return err
+		}
+		return auth.partTwo("https://auth0.openai.com" + urlResponse.URL)
 	} else {
 		return NewError("part_one", resp.StatusCode, string(body), fmt.Errorf("error: Check details"))
 	}
