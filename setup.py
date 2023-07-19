@@ -3,7 +3,7 @@ from setuptools import setup
 
 setup(
     name="OpenAIAuth",
-    version="2.0.0",
+    version="3.0.0",
     license="MIT",
     author="pengzhile",
     author_email="acheong@student.dalat.org",
@@ -14,7 +14,7 @@ setup(
     url="https://github.com/acheong08/OpenAIAuth",
     project_urls={"Bug Report": "https://github.com/acheong08/OpenAIAuth/issues/new"},
     install_requires=[
-        "requests",
+        "tls_client",
     ],
     classifiers=[
         "License :: OSI Approved :: MIT License",
