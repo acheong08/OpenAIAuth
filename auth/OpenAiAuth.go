@@ -373,7 +373,8 @@ func (auth *Authenticator) partSix(url, redirect_url string) *Error {
 
 	// Check if access token in data
 	if _, ok := result["accessToken"]; !ok {
-		return NewError("part_six", 0, "Missing access token", fmt.Errorf("error: Check details"))
+		result_string := fmt.Sprintf("%v", result)
+		return NewError("part_six", 0, result_string, fmt.Errorf("missing access token"))
 	}
 	auth.AuthResult.AccessToken = result["accessToken"].(string)
 
