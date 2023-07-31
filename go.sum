@@ -6,8 +6,6 @@ github.com/bogdanfinn/tls-client v1.3.8 h1:HIucpArqyqOUIN/7MDJJA9Ngt+lKHUyoQ2y2C
 github.com/bogdanfinn/tls-client v1.3.8/go.mod h1:dMt6v22wNyA1Y4e3Us6jK3lC64Y6FE2cziydZ7pGK3A=
 github.com/bogdanfinn/utls v1.5.15 h1:XUUMJZh2AptaouuwUrc/RQOYgyV89rstC5Nj3FSP43s=
 github.com/bogdanfinn/utls v1.5.15/go.mod h1:mHeRCi69cUiEyVBkKONB1cAbLjRcZnlJbGzttmiuK4o=
-github.com/google/uuid v1.3.0 h1:t6JiXgmwXMjEs8VusXIJk2BXHsn+wx8BZdTaoZ5fu7I=
-github.com/google/uuid v1.3.0/go.mod h1:TIyPZe4MgqvfeYDBFedMoGGpEw/LqOeaOT+nhxU+yHo=
 github.com/klauspost/compress v1.15.12 h1:YClS/PImqYbn+UILDnqxQCZ3RehC9N318SU3kElDUEM=
 github.com/klauspost/compress v1.15.12/go.mod h1:QPwzmACJjUTFsnSHH934V6woptycfrDDJnH7hvFVbGM=
 github.com/nirasan/go-oauth-pkce-code-verifier v0.0.0-20220510032225-4f9f17eaec4c h1:4RYnE0ISVwRxm9Dfo7utw1dh0kdRDEmVYq2MFVLy5zI=

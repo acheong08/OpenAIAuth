@@ -350,6 +350,13 @@ func (auth *Authenticator) partSix(url, redirect_url string) *Error {
 	if err != nil {
 		return NewError("part_six", 0, "Response was not JSON", err)
 	}
+	if resp.StatusCode != 302 {
+		return NewError("part_six", resp.StatusCode, url, fmt.Errorf("incorrect response code"))
+	}
+	// Check location header
+	if location := resp.Header.Get("Location"); location != "https://chat.openai.com/" {
+		return NewError("part_six", resp.StatusCode, location, fmt.Errorf("incorrect redirect"))
+	}
 
 	url = "https://chat.openai.com/api/auth/session"
 
